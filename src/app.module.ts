@@ -5,8 +5,8 @@ import { AuthModule } from './auth/auth.module';
 import { GameModule } from './game/game.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { BoardModule } from './board/board.module';
 import { NotificationModule } from './notification/notification.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { NotificationModule } from './notification/notification.module';
         synchronize: true,
       })
     }),
-    AuthModule, GameModule, BoardModule, NotificationModule
+    AuthModule, GameModule, NotificationModule, CommentModule
   ],
   controllers: [AppController],
   providers: [AppService],
