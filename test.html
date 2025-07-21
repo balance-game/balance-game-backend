@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>지갑 로그인</title>
+</head>
+<body>
+  <button id="login-btn">지갑 로그인</button>
+
+  <script>
+    const loginBtn = document.getElementById('login-btn');
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask 설치하세요.");
+        return;
+      }
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      console.log(accounts[0])
+      return accounts[0];
+    }
+
+    async function fetchNonce(address) {
+      const res = await fetch('http://localhost:3000/auth/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address })
+      });
+
+      const data = await res.json();
+      return data.message;
+    }
+
+    async function signMessage(nonce, address) {
+      console.log(nonce)
+      return await window.ethereum.request({
+        method: 'personal_sign',
+        params: [nonce, address]
+      });
+    }
+
+    async function login() {
+      try {
+        const address = await connectWallet();
+        const nonce = await fetchNonce(address);
+        console.log(nonce)
+        const signature = await signMessage(nonce, address);
+
+        const loginRes = await fetch('http://localhost:3000/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, signature }),
+          credentials: 'include'
+        });
+
+        const loginData = await loginRes.json();
+        console.log('✅ 로그인 결과:', loginData);
+      } catch (err) {
+        console.error('❌ 에러:', err);
+      }
+    }
+
+    loginBtn.addEventListener('click', login);
+  </script>
+</body>
+</html>
