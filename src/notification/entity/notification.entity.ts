@@ -6,11 +6,8 @@ export class Notification {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({ type: "varchar", length: 42 })
-    address: string;
-
     @ManyToOne(() => User, (user) => user.notifications)
-    @JoinColumn({ name: "address", referencedColumnName: "address" })
+    @JoinColumn({ name: "user_id", referencedColumnName: "id" })
     user: User;
 
     @Column({ type: "text", nullable: false})

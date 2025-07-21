@@ -1,18 +1,13 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, OneToOne, PrimaryColumn, PrimaryColumnCannotBeNullableError } from "typeorm";
-import { User } from "./user.entity";
+import { Column, Entity, PrimaryColumn } from "typeorm";
 
 @Entity("nonce")
 export class Nonce {
   @PrimaryColumn({ type: "varchar", length: 42 })
   address: string;
 
-  @Column({ nullable: false })
+  @Column({ type: "bigint", nullable: false })
   nonce: number;
 
-  @OneToOne(() => User) 
-  @JoinColumn({ name: "address", referencedColumnName: "address" })
-  user: User;
-
-  @CreateDateColumn({ name: "created_at", type: "timestamp" })
-  createdAt: Date;
+  @Column({ name: "expiry_date", type: "timestamp", nullable: false })
+  expiryDate: Date;
 }

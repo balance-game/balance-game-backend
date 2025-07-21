@@ -1,18 +1,18 @@
-import { Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToOne, PrimaryColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./user.entity";
 
 @Entity("refresh_token")
 export class RefreshToken {
-    @PrimaryColumn({ type: "varchar", length: 42 })
-    address: string;
+    @PrimaryGeneratedColumn({ type: "bigint" })
+    id: number;
 
+    @Column({ unique: true, type: "varchar", length: 255, nullable: false })
+    token: string;
+    
     @ManyToOne(() => User, (user) => user.refreshToken)
-    @JoinColumn({ name: "address", referencedColumnName: "address" })
+    @JoinColumn({ name: "user_id", referencedColumnName: "id" })
     user: User;
 
-    @Column({ type: "varchar", length: 255, nullable: false })
-    token: string;
-
-    @Column({ name: "expriy_date", type: "timestamp", nullable: false })
-    expriyDate: Date;
+    @Column({ name: "expiry_date", type: "timestamp", nullable: false })
+    expiryDate: Date;
 }

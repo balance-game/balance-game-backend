@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Role } from "../enum/role.enum";
 import { RefreshToken } from "./refresh-token.entity";
 import { Comment } from "src/comment/entity/comment.entity";
@@ -7,7 +7,10 @@ import { Like } from "src/comment/entity/like.entity";
 
 @Entity("user")
 export class User {
-  @PrimaryColumn({ type: "varchar", length: 42 })
+  @PrimaryGeneratedColumn({ type: "bigint" })
+  id: number;
+
+  @Column({ unique: true, type: "varchar", length: 42, nullable: false })
   address: string;
 
   @Column({ unique: true, type: "varchar", length: 42, nullable: false })

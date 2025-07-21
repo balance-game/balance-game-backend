@@ -18,11 +18,11 @@ export class Comment {
     @Column({ type: "text", nullable: false })
     content: string;
 
-    @Column({ type: "varchar", length: 42, nullable: false })
+    @Column({ type: "varchar", nullable: false })
     author: string;
 
     @ManyToOne(() => User, (user) => user.comments)
-    @JoinColumn({ name: "author", referencedColumnName: "name" })
+    @JoinColumn({ name: "author", referencedColumnName: "id" })
     user: User;
 
     @Column({ type: "bigint", name: "parent_id", nullable: true })

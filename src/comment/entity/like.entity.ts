@@ -5,8 +5,8 @@ import { Comment } from "./comment.entity";
 
 @Entity("like")
 export class Like {
-    @PrimaryColumn()
-    address;
+    @PrimaryColumn({ name: "user_id" })
+    userId;
 
     @PrimaryColumn({ name: "comment_id" })
     commentId;
@@ -14,11 +14,11 @@ export class Like {
     @Column({ type: "enum", enum: LikeType, nullable: false })
     type;
 
-    @ManyToOne(() => User, (user) => user.likes) // ← 유저가 남긴 like들
-    @JoinColumn({ name: "address", referencedColumnName: "address" })
+    @ManyToOne(() => User, (user) => user.likes)
+    @JoinColumn({ name: "user_id", referencedColumnName: "id" })
     user: User;
 
-    @ManyToOne(() => Comment, (comment) => comment.likes) // ← 댓글에 달린 like들
+    @ManyToOne(() => Comment, (comment) => comment.likes)
     @JoinColumn({ name: "comment_id", referencedColumnName: "id" })
     comment: Comment;
 }

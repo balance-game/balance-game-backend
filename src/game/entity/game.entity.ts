@@ -1,9 +1,9 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Comment } from "src/comment/entity/comment.entity";
 
 @Entity("game")
 export class Game {
-    @PrimaryColumn({ type: "bigint" })
+    @PrimaryGeneratedColumn({ type: "bigint" })
     id: number;
 
     @Column({ type: "varchar", length: 255 })
