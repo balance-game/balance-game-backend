@@ -1,15 +1,16 @@
-import { BadGatewayException, BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Nonce } from './entity/nonce.entity';
 import { GetNonce } from './dto/get-nonce.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HandleUserAuth } from './dto/handle-user-auth.dto';
 import { ethers } from 'ethers';
-import { User } from './entity/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entity/refresh-token.entity';
 import { JwtPayload } from 'src/common/interface/jwt-payload';
+import { User } from './entity/user.entity';
+import { EditUser } from './dto/edit-user.dto';
 
 const signMessage = "Please login with";
 
@@ -46,11 +47,11 @@ export class AuthService {
 
     if (!nonceValidCheck.nonceValid) {
       await this.nonceRepo.delete({ address: nonceValidCheck.address });
-      throw new UnauthorizedException("인증코드가 만료되었습니다");
+      throw new UnauthorizedException("인증코드가 만료되었습니다.");
     }
     const signer = ethers.verifyMessage(`${signMessage} ${nonceValidCheck.nonce}`, dto.signature).toLocaleLowerCase();
     if (signer !== dto.address) {
-      throw new UnauthorizedException("유효하지 않은 서명입니다");
+      throw new UnauthorizedException("유효하지 않은 서명입니다.");
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -90,7 +91,7 @@ export class AuthService {
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw new InternalServerErrorException("서버 오류로 로그인에 실패했습니다");
+      throw new InternalServerErrorException("서버 오류로 로그인에 실패했습니다.");
     } finally {
       await queryRunner.release();
     }
@@ -122,8 +123,31 @@ export class AuthService {
   async me(userId: number) {
     return await this.userRepo.findOne({ 
       where: { id: userId },
-      select: { name: true }
+      select: { name: true, address: true }
     });
+  }
+
+  async editUserName(userId: number, dto: EditUser) {
+    let user = await this.userRepo.findOne({ where: { id: userId } });
+    if (user) {
+      const findExistUser = await this.userRepo.findOne({ where: { name: dto.name } });
+      if (findExistUser) {
+        throw new ConflictException("이미 존재하는 이름입니다.");
+      }
+      user.name = dto.name;
+      user = await this.userRepo.save(user);
+      return {
+        address: user.address,
+        name: user.name
+      }
+    }
+    else {
+      throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
+    }
+  }
+
+  async deleteUser(userId: number) {
+
   }
 
   async nonceValidCheck(address: string) {
@@ -131,13 +155,13 @@ export class AuthService {
     const nonce = await this.nonceRepo.findOne({ where: { address: address } });
 
     if (!nonce) {
-      throw new BadRequestException("인증코드가 존재하지 않습니다");
+      throw new BadRequestException("인증코드가 존재하지 않습니다.");
     }
 
     return {
-      "nonceValid": nonce.expiryDate > nowDate,
-      "address": nonce.address,
-      "nonce": nonce.nonce
+      nonceValid: nonce.expiryDate > nowDate,
+      address: nonce.address,
+      nonce: nonce.nonce
     };
   }
 
