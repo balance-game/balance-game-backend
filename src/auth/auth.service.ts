@@ -1,5 +1,5 @@
 import { BadGatewayException, BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { Nonce } from './entity/nonce.entity';
 import { GetNonce } from './dto/get-nonce.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,6 +11,7 @@ import { RefreshToken } from './entity/refresh-token.entity';
 import { JwtPayload } from 'src/common/interface/jwt-payload';
 import { User } from './entity/user.entity';
 import { EditUser } from './dto/edit-user.dto';
+import { v4 } from 'uuid';
 
 const signMessage = "Please login with";
 
@@ -27,7 +28,6 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource
   ) {}
-
 
   async getNonce(dto: GetNonce) {
     const nonce = Math.floor(Math.random() * 1000000000000);
@@ -70,6 +70,9 @@ export class AuthService {
           address: dto.address,
           name: dto.address,
         });
+      }
+      else if (user.deletedAt) {
+        user.deletedAt = null;
       }
 
       const payload = { userId: user.id };
@@ -121,16 +124,22 @@ export class AuthService {
   }
 
   async me(userId: number) {
-    return await this.userRepo.findOne({ 
-      where: { id: userId },
+    const user = await this.userRepo.findOne({ 
+      where: { id: userId, deletedAt: IsNull() },
       select: { name: true, address: true }
     });
+    if (user) {
+      return user;
+    }
+    else {
+      throw new BadRequestException("존재하지 않는 유저입니다.");
+    }
   }
 
   async editUserName(userId: number, dto: EditUser) {
-    let user = await this.userRepo.findOne({ where: { id: userId } });
+    let user = await this.userRepo.findOne({ where: { id: userId, deletedAt: IsNull() } });
     if (user) {
-      const findExistUser = await this.userRepo.findOne({ where: { name: dto.name } });
+      const findExistUser = await this.userRepo.findOne({ where: { name: dto.name, deletedAt: IsNull() } });
       if (findExistUser) {
         throw new ConflictException("이미 존재하는 이름입니다.");
       }
@@ -142,12 +151,24 @@ export class AuthService {
       }
     }
     else {
-      throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
+      throw new BadRequestException("존재하지 않는 유저입니다.");
     }
   }
 
   async deleteUser(userId: number) {
-
+    const user = await this.userRepo.findOne({ 
+      where: { id: userId, deletedAt: IsNull() },
+      relations: ["refreshToken"]
+    });
+    if (user) {
+      user.name = v4();
+      await this.refreshTokenRepo.remove(user.refreshToken);
+      await this.userRepo.softRemove(user);
+      this.userRepo.save(user);
+    }
+    else {
+      throw new BadRequestException("존재하지 않는 유저입니다.");
+    }
   }
 
   async nonceValidCheck(address: string) {

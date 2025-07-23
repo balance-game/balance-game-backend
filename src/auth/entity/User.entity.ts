@@ -23,7 +23,7 @@ export class User {
   createdAt: Date;
 
   @DeleteDateColumn({ name: "deleted_at", type: "timestamp", nullable: true })
-  deletedAt: Date;
+  deletedAt: Date | null;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshToken: RefreshToken[];
@@ -36,4 +36,5 @@ export class User {
 
   @OneToMany(() => Like, (like) => like.user)
   likes: Like[];
+  user: any;
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, UseInterceptors, Req, Delete, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, UseInterceptors, Req, Delete, Patch, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { GetNonce } from './dto/get-nonce.dto';
 import { HandleUserAuth } from './dto/handle-user-auth.dto';
@@ -46,6 +46,7 @@ export class AuthController {
 
   @Delete("/")
   @UseGuards(AuthGuard("jwt"))
+  @HttpCode(204)
   deleteUser(@GetUser() user: JwtPayload) {
     return this.authService.deleteUser(user.userId);
   }  

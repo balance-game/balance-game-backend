@@ -4,7 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../entity/user.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { JwtPayload } from 'src/common/interface/jwt-payload';
 
 @Injectable()
@@ -25,13 +25,13 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: JwtPayload) {
     const userId = Number(payload.userId);
-    const isUser = await this.userRepo.findOne({ where: { id: userId } });
+    const isUser = await this.userRepo.findOne({ where: { id: userId, deletedAt: IsNull() } });
 
     if (isUser) {
       return { userId };
     }
     else {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException("존재하지 않는 유저입니다.");
     }
   }
 }
