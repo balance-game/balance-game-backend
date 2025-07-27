@@ -4,6 +4,7 @@ import { RefreshToken } from "./refresh-token.entity";
 import { Comment } from "src/comment/entity/comment.entity";
 import { Notification } from "src/notification/entity/notification.entity";
 import { Like } from "src/comment/entity/like.entity";
+import { Game } from "src/game/entity/game.entity";
 
 @Entity("user")
 export class User {
@@ -36,5 +37,7 @@ export class User {
 
   @OneToMany(() => Like, (like) => like.user)
   likes: Like[];
-  user: any;
+
+  @OneToMany(() => Game, (game) => game.user)
+  games: Game[];
 }

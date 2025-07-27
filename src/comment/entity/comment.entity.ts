@@ -19,14 +19,14 @@ export class Comment {
     content: string;
 
     @Column({ type: "varchar", nullable: false })
-    author: string;
+    author: number;
 
     @ManyToOne(() => User, (user) => user.comments)
     @JoinColumn({ name: "author", referencedColumnName: "id" })
     user: User;
 
     @Column({ type: "bigint", name: "parent_id", nullable: true })
-    parentId: number;
+    parentId: number | null;
 
     @Column({ type: "int", name: "like_count", default: 0, nullable: false })
     likeCount: number
