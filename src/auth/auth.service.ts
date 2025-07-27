@@ -1,5 +1,5 @@
-import { BadGatewayException, BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
 import { Nonce } from './entity/nonce.entity';
 import { GetNonce } from './dto/get-nonce.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -63,6 +63,7 @@ export class AuthService {
 
       let user = await queryRunner.manager.findOne(User, {
         where: { address: nonceValidCheck.address },
+        withDeleted: true
       });
 
       if (!user) {
@@ -73,6 +74,7 @@ export class AuthService {
       }
       else if (user.deletedAt) {
         user.deletedAt = null;
+        await queryRunner.manager.save(user);
       }
 
       const payload = { userId: user.id };
@@ -94,6 +96,7 @@ export class AuthService {
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      console.error(error);
       throw new InternalServerErrorException("서버 오류로 로그인에 실패했습니다.");
     } finally {
       await queryRunner.release();
@@ -125,7 +128,7 @@ export class AuthService {
 
   async me(userId: number) {
     const user = await this.userRepo.findOne({ 
-      where: { id: userId, deletedAt: IsNull() },
+      where: { id: userId },
       select: { name: true, address: true }
     });
     if (user) {
@@ -137,9 +140,9 @@ export class AuthService {
   }
 
   async editUserName(userId: number, dto: EditUser) {
-    let user = await this.userRepo.findOne({ where: { id: userId, deletedAt: IsNull() } });
+    let user = await this.userRepo.findOne({ where: { id: userId } });
     if (user) {
-      const findExistUser = await this.userRepo.findOne({ where: { name: dto.name, deletedAt: IsNull() } });
+      const findExistUser = await this.userRepo.findOne({ where: { name: dto.name } });
       if (findExistUser) {
         throw new ConflictException("이미 존재하는 이름입니다.");
       }
@@ -157,7 +160,7 @@ export class AuthService {
 
   async deleteUser(userId: number) {
     const user = await this.userRepo.findOne({ 
-      where: { id: userId, deletedAt: IsNull() },
+      where: { id: userId },
       relations: ["refreshToken"]
     });
     if (user) {
