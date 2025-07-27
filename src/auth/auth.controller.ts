@@ -8,6 +8,7 @@ import { GetUser } from 'src/common/decorator/get-user.decorator';
 import { JwtPayload } from 'src/common/interface/jwt-payload';
 import { Request } from 'express';
 import { EditUser } from './dto/edit-user.dto';
+import { jwtUser } from 'src/common/interface/jwt-user';
 
 @Controller('auth')
 export class AuthController {
@@ -34,20 +35,20 @@ export class AuthController {
 
   @Get("/me")
   @UseGuards(AuthGuard("jwt"))
-  me(@GetUser() user: JwtPayload) {
+  me(@GetUser() user: jwtUser) {
     return this.authService.me(user.userId);
   }
 
   @Patch("/")
   @UseGuards(AuthGuard("jwt"))
-  editUserName(@GetUser() user: JwtPayload, @Body() dto: EditUser) {
+  editUserName(@GetUser() user: jwtUser, @Body() dto: EditUser) {
     return this.authService.editUserName(user.userId, dto);
   }
 
   @Delete("/")
   @UseGuards(AuthGuard("jwt"))
   @HttpCode(204)
-  deleteUser(@GetUser() user: JwtPayload) {
+  deleteUser(@GetUser() user: jwtUser) {
     return this.authService.deleteUser(user.userId);
   }  
 }

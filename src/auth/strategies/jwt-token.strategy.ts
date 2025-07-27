@@ -25,10 +25,13 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(payload: JwtPayload) {
     const userId = Number(payload.userId);
-    const isUser = await this.userRepo.findOne({ where: { id: userId, deletedAt: IsNull() } });
+    const isUser = await this.userRepo.findOne({ where: { id: userId } });
 
     if (isUser) {
-      return { userId };
+      return { 
+        userId: isUser.id,
+        userName: isUser.name
+      };
     }
     else {
       throw new UnauthorizedException("존재하지 않는 유저입니다.");
