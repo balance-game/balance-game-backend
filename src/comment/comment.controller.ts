@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/common/decorator/get-user.decorator';
@@ -19,11 +19,12 @@ export class CommentController {
 
   @Put("/")
   editComment(@GetUser() user: jwtUser, @Body() dto: EditComment) {
-    return this.commentService.editComment();
+    return this.commentService.editComment(user, dto);
   }
 
   @Delete("/:id")
+  @HttpCode(204)
   deleteComment(@GetUser() user: jwtUser, @Param("id") id: number) {
-    return this.commentService.deleteComment()
+    return this.commentService.deleteComment(user, id);
   }
 }

@@ -167,7 +167,7 @@ export class AuthService {
       user.name = v4();
       await this.refreshTokenRepo.remove(user.refreshToken);
       await this.userRepo.softRemove(user);
-      this.userRepo.save(user);
+      await this.userRepo.save(user);
     }
     else {
       throw new BadRequestException("존재하지 않는 유저입니다.");
