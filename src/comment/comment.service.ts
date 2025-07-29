@@ -6,6 +6,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entity/comment.entity';
 import { jwtUser } from 'src/common/interface/jwt-user';
 import { EditComment } from './dto/edit-comment.dto';
+import { Like } from './entity/like.entity';
+import { LikeType } from 'src/comment/enum/like-type.enum';
 
 @Injectable()
 export class CommentService {
@@ -32,8 +34,6 @@ export class CommentService {
                 parentId: comment.parentId,
                 author: user.userName,
                 createAt: comment.createdAt,
-                likeCount: comment.likeCount,
-                disLikeCount: comment.disLikeCount
             }
         } catch(err) {
             console.error(err);
@@ -56,8 +56,6 @@ export class CommentService {
                             parentId: comment.parentId,
                             author: user.userName,
                             createAt: comment.createdAt,
-                            likeCount: comment.likeCount,
-                            disLikeCount: comment.disLikeCount
                         }
                     }
                     else {
@@ -101,4 +99,50 @@ export class CommentService {
             throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
         }
     }
+
+    async handleCommentLike(user: jwtUser, commentId: number, type: LikeType) {
+        try {
+            return await this.dataSource.transaction(async (manager) => {
+                const comment = await manager.findOne(Comment, { where: { id: commentId } });
+                if (comment) {
+                    const like = await manager.findOne(Like, { where: { userId: user.userId, commentId: commentId } });
+                    if (like) {
+                        // 현재 좋아요 타입과 요청한 좋아요 타입이 같다면 좋아요 취소
+                        if (like.type == type) {
+                            await manager.remove(like);
+                        }
+                        else {
+                            // 서로 다르면 타입 변경
+                            like.type = type;
+                            await manager.save(Like, like);
+                        }
+                    }
+                    else {
+                        await manager.insert(Like, {
+                            user: { id: user.userId },
+                            comment: { id: commentId },
+                            type: type
+                        });
+                    }
+
+                    // 댓글 현황 반환
+                    return;
+                }
+                else {
+                    throw new NotFoundException("존재하지 않는 댓글입니다.");
+                }
+            });
+        } catch (err) {
+            if (err instanceof ForbiddenException || err instanceof NotFoundException) {
+                throw err;
+            }
+            console.error(err);
+            throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
+        }
+    }
+
+    async commentCount() {
+
+    }
 }
+ 

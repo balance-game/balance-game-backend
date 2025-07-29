@@ -28,17 +28,11 @@ export class Comment {
     @Column({ type: "bigint", name: "parent_id", nullable: true })
     parentId: number | null;
 
-    @Column({ type: "int", name: "like_count", default: 0, nullable: false })
-    likeCount: number
-
-    @Column({ type: "int", name: "dis_like_count", default: 0, nullable: false })
-    disLikeCount: number
-
     @CreateDateColumn({ type: "timestamp", name: "created_at", nullable: false})
     createdAt: Date;
 
     @UpdateDateColumn({ type: "timestamp", name: "update_at", nullable: false })
-    updateAt: Date;
+    updatedAt: Date;
 
     @DeleteDateColumn({ type: "timestamp", name: "deleted_at", nullable: true })
     deletedAt: Date;
