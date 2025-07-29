@@ -39,7 +39,7 @@ export class AuthService {
       expiryDate: expiryDate,
     });
 
-    return { "message": `${signMessage} ${nonce}` };
+    return { nonceMessage: `${signMessage} ${nonce}` };
   }
 
   async handleUserAuth(dto: HandleUserAuth) {
