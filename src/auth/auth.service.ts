@@ -33,11 +33,16 @@ export class AuthService {
     const nonce = Math.floor(Math.random() * 1000000000000);
     const expiryDate = new Date(Date.now() + 3 * 60 * 1000);
 
-    await this.nonceRepo.save({
-      address: dto.address,
-      nonce: nonce,
-      expiryDate: expiryDate,
-    });
+    try {
+      await this.nonceRepo.upsert({
+        address: dto.address,
+        nonce,
+        expiryDate,
+      }, ['address']);
+    } catch(err) {
+      console.error(err);
+      throw new InternalServerErrorException("서버에 오류가 발생했습니다");
+    }
 
     return { nonceMessage: `${signMessage} ${nonce}` };
   }

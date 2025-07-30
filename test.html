@@ -29,7 +29,8 @@
       });
 
       const data = await res.json();
-      return data.message;
+      console.log(data.data);
+      return data.data.nonceMessage;
     }
 
     async function signMessage(nonce, address) {
