@@ -15,7 +15,7 @@ export class ResponseInterceptor implements NestInterceptor {
           statusCode: res.statusCode,
           path: req.originalUrl,
           message: data?.message ?? '요청에 성공했습니다.',
-          data: data?.data ?? data,
+          data: data,
         };
       }),
     );

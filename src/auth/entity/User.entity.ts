@@ -5,6 +5,7 @@ import { Comment } from "src/comment/entity/comment.entity";
 import { Notification } from "src/notification/entity/notification.entity";
 import { Like } from "src/comment/entity/like.entity";
 import { Game } from "src/game/entity/game.entity";
+import { Vote } from "src/game/entity/vote.entity";
 
 @Entity("user")
 export class User {
@@ -40,4 +41,7 @@ export class User {
 
   @OneToMany(() => Game, (game) => game.user)
   games: Game[];
+
+  @OneToMany(() => Vote, (vote) => vote.user)
+  votes: Vote[];
 }
