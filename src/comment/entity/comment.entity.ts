@@ -18,7 +18,7 @@ export class Comment {
     @Column({ type: "text", nullable: false })
     content: string;
 
-    @Column({ type: "varchar", nullable: false })
+    @Column({ name: 'author', type: 'bigint', nullable: false })
     author: number;
 
     @ManyToOne(() => User, (user) => user.comments)

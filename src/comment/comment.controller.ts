@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/common/decorator/get-user.decorator';

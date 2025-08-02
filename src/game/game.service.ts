@@ -1,15 +1,18 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from './entity/game.entity';
-import { LessThan, MoreThan, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { GameSortType } from './enum/gameSortType.enum';
 import { GameStatusType } from './enum/gameStatusType.enum';
+import { Comment } from 'src/comment/entity/comment.entity';
+import { CommentService } from 'src/comment/comment.service';
 
 @Injectable()
 export class GameService {
     constructor(
         @InjectRepository(Game)
-        private readonly gameRepo: Repository<Game>
+        private readonly gameRepo: Repository<Game>,
+        private readonly commentService: CommentService
     ) {}
 
     async getAllGames(
@@ -94,7 +97,6 @@ export class GameService {
     }
 
     async getGame(id: number) {
-        // 댓글 가져오는 코드 추가 필요
         try {
             const game = await this.gameRepo.find({
                 where: { id: id },
@@ -103,9 +105,11 @@ export class GameService {
 
             if (game) {
                 const { user, ...rest } = game[0];
+                const comment = await this.commentService.getComment(id);
                 return {
                     ...rest,
                     createdByName: user?.name || null,
+                    comment
                 };
             }
             else {

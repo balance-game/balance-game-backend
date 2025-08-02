@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConsoleLogger, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateComment } from './dto/create-comment.dto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { User } from 'src/auth/entity/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entity/comment.entity';
@@ -23,11 +23,19 @@ export class CommentService {
 
     async createComment(user: jwtUser, dto: CreateComment) {
         try {
+            if (dto.parentId) {
+                const existComment = await this.commentRepo.findOne({
+                    where: { id: dto.parentId }
+                });
+                if (!existComment) {
+                    throw new NotFoundException("존재하지 않는 댓글입니다");
+                } 
+            }
             const comment = await this.commentRepo.save({
                 gameId: dto.gameId,
                 content: dto.content,
                 parentId: dto.parentId,
-                author: user.userId,
+                author: user.userId
             });
     
             return {
@@ -38,6 +46,9 @@ export class CommentService {
                 createAt: comment.createdAt,
             }
         } catch(err) {
+            if (err instanceof NotFoundException) {
+                throw err;
+            }
             console.error(err);
             throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
         }
@@ -157,6 +168,52 @@ export class CommentService {
         .where("like.comment_id = :commentId", { commentId })
         .groupBy("like.type")
         .getRawMany();
+    }
+
+    async getComment(gameId: number) {
+        let qb = this.commentRepo
+        .createQueryBuilder("co")
+        .leftJoin("co.user", "u")
+        .leftJoin("like", "li", "li.comment_id = co.id")
+        .select([
+            "co.id AS comment_id",
+            "co.game_id AS game_id",
+            "co.content AS content",
+            "co.parent_id AS parent_id",
+            "u.name AS author",
+            "co.created_at AS created_at",
+            `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likes`,
+            `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikes`,
+        ])
+        .groupBy("co.id")
+        .addGroupBy("co.game_id")
+        .addGroupBy("co.content")
+        .addGroupBy("co.parent_id")
+        .addGroupBy("u.name")
+        .addGroupBy("co.created_at")
+
+        const commentList = await qb
+        .where("parent_id is null")
+        .orderBy("co.created_at", "DESC")
+        .getRawMany();
+
+
+        
+        const result = await Promise.all(
+            commentList.map(async (comment) => {
+                const replies = await qb
+                .where("co.parent_id = :parentId", { parentId: comment.comment_id })
+                .orderBy("co.created_at", "ASC")
+                .getRawMany();
+
+                return {
+                    ...comment,
+                    replies,
+                };
+            })
+        );
+
+        return result;
     }
 }
  
