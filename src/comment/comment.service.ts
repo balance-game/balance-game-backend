@@ -16,6 +16,8 @@ export class CommentService {
         private readonly userRepo: Repository<User>,
         @InjectRepository(Comment)
         private readonly commentRepo: Repository<Comment>,
+        @InjectRepository(Like)
+        private readonly likeRepo: Repository<Like>,
         private readonly dataSource: DataSource
     ) {}
 
@@ -125,8 +127,14 @@ export class CommentService {
                         });
                     }
 
-                    // 댓글 현황 반환
-                    return;
+                    const commentLikeCount = await this.commentLikeCount(commentId);
+                    const likeCount = commentLikeCount[0]?.count ?? 0;
+                    const dislikeCount = commentLikeCount[1]?.count ?? 0;
+                    return {
+                        ...comment,
+                        likeCount: likeCount,
+                        dislikeCount: dislikeCount
+                    };
                 }
                 else {
                     throw new NotFoundException("존재하지 않는 댓글입니다.");
@@ -141,8 +149,14 @@ export class CommentService {
         }
     }
 
-    async commentCount() {
-
+    async commentLikeCount(commentId: number) {
+        return await this.likeRepo
+        .createQueryBuilder()
+        .select("like.type", "type")
+        .addSelect("count(*)", "count")
+        .where("like.comment_id = :commentId", { commentId })
+        .groupBy("like.type")
+        .getRawMany();
     }
 }
  

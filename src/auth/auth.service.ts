@@ -144,6 +144,8 @@ export class AuthService {
     }
   }
 
+  // 다른 유저 조회
+
   async editUserName(userId: number, dto: EditUser) {
     let user = await this.userRepo.findOne({ where: { id: userId } });
     if (user) {
