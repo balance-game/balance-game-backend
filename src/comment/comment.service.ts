@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entity/comment.entity';
 import { jwtUser } from 'src/common/interface/jwt-user';
 import { EditComment } from './dto/edit-comment.dto';
-import { Like } from './entity/like.entity';
+import { Like } from './entity/like.entity';    
 import { LikeType } from 'src/comment/enum/like-type.enum';
 
 @Injectable()
@@ -182,8 +182,8 @@ export class CommentService {
             "co.parent_id AS parent_id",
             "u.name AS author",
             "co.created_at AS created_at",
-            `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likes`,
-            `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikes`,
+            `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likeCount`,
+            `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikeCount`,
         ])
         .groupBy("co.id")
         .addGroupBy("co.game_id")
@@ -197,9 +197,34 @@ export class CommentService {
         .orderBy("co.created_at", "DESC")
         .getRawMany();
 
+        const top3Comment = await this.commentRepo.query(`
+            SELECT
+                co.id AS comment_id,
+                co.game_id AS game_id,
+                co.content AS content,
+                co.parent_id AS parent_id,
+                u.name AS author,
+                co.created_at AS created_at,
+                SUM(CASE WHEN li.type = 'LIKE' THEN 1 ELSE 0 END) AS likeCount,
+                SUM(CASE WHEN li.type = 'DISLIKE' THEN 1 ELSE 0 END) AS dislikeCount
+            FROM comment co
+            LEFT JOIN user u ON u.id = co.author
+            LEFT JOIN \`like\` li ON li.comment_id = co.id
+            GROUP BY
+                co.id,
+                co.game_id,
+                co.content,
+                co.parent_id,
+                u.name,
+                co.created_at
+            HAVING likeCount + dislikeCount >= 15
+            ORDER BY (likeCount + dislikeCount) DESC, likeCount DESC
+            LIMIT 3;
+        `);
 
-        
-        const result = await Promise.all(
+        console.log(top3Comment);
+
+        const allComent = await Promise.all(
             commentList.map(async (comment) => {
                 const replies = await qb
                 .where("co.parent_id = :parentId", { parentId: comment.comment_id })
@@ -213,7 +238,7 @@ export class CommentService {
             })
         );
 
-        return result;
+        return { top3Comment, allComent };
     }
 }
  
