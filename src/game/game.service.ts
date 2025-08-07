@@ -6,6 +6,7 @@ import { GameSortType } from './enum/gameSortType.enum';
 import { GameStatusType } from './enum/gameStatusType.enum';
 import { Comment } from 'src/comment/entity/comment.entity';
 import { CommentService } from 'src/comment/comment.service';
+import { jwtUser } from 'src/common/interface/jwt-user';
 
 @Injectable()
 export class GameService {
@@ -96,7 +97,7 @@ export class GameService {
         }
     }
 
-    async getGame(id: number) {
+    async getGame(_user: jwtUser, id: number) {
         try {
             const game = await this.gameRepo.find({
                 where: { id: id },
@@ -105,7 +106,7 @@ export class GameService {
 
             if (game) {
                 const { user, ...rest } = game[0];
-                const comment = await this.commentService.getComment(id);
+                const comment = await this.commentService.getComment(_user, id);
                 return {
                     ...rest,
                     createdByName: user?.name || null,

@@ -4,7 +4,6 @@ import { Nonce } from './entity/nonce.entity';
 import { GetNonce } from './dto/get-nonce.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { HandleUserAuth } from './dto/handle-user-auth.dto';
-import { ethers } from 'ethers';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entity/refresh-token.entity';
@@ -12,6 +11,7 @@ import { JwtPayload } from 'src/common/interface/jwt-payload';
 import { User } from './entity/user.entity';
 import { EditUser } from './dto/edit-user.dto';
 import { v4 } from 'uuid';
+import { ethers } from 'ethers';
 
 const signMessage = "Please login with";
 

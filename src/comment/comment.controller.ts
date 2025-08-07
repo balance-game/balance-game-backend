@@ -1,8 +1,7 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/common/decorator/get-user.decorator';
-import { JwtPayload } from 'src/common/interface/jwt-payload';
 import { CreateComment } from './dto/create-comment.dto';
 import { EditComment } from './dto/edit-comment.dto';
 import { jwtUser } from 'src/common/interface/jwt-user';
@@ -18,9 +17,9 @@ export class CommentController {
     return this.commentService.createComment(user, dto);
   }
 
-  @Put("/")
-  editComment(@GetUser() user: jwtUser, @Body() dto: EditComment) {
-    return this.commentService.editComment(user, dto);
+  @Put("/:id")
+  editComment(@GetUser() user: jwtUser,@Param("id", ParseIntPipe) id: number, @Body() dto: EditComment) {
+    return this.commentService.editComment(user, id, dto);
   }
 
   @Delete("/:id")
