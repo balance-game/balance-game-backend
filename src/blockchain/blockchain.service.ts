@@ -1,15 +1,19 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Contract, WebSocketProvider } from 'ethers';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Contract, id, WebSocketProvider } from 'ethers';
 import * as BalanceGameJson from './abi/BalanceGame.json';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Game } from 'src/game/entity/game.entity';
+import { Repository } from 'typeorm';
+import { User } from 'src/auth/entity/user.entity';
 
 const CONTRACT_ADDRESS = '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512';
-const RPC_URL = 'ws://127.0.0.1:8545';
 
 /**
  *
  * 2025-08-05 Memo
- * 1. 좋아요 내가 좋아요 누른건지 구별하는 칼럼 반환하도록 수정하기
- * 2. DB에 게임정보 저장하도록 하기 (blockchain)
+ * 1. 좋아요 내가 좋아요 누른건지 구별하는 칼럼 반환하도록 수정하기 O
+ * 2. DB에 게임정보 저장하도록 하기 (blockchain) 
  * 3. 투표한 사람 정보 저장 (blockchain)
  * 4. 내 정보 반환할때 투표 및 상대방 조회기능도 만들기
  * 5. 백엔드 API 업데이트 하기 
@@ -19,14 +23,30 @@ const RPC_URL = 'ws://127.0.0.1:8545';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
-  private provider;
+  private provider: WebSocketProvider;
   private contract: Contract;
 
-  async onModuleInit() {
-    this.provider = new WebSocketProvider(RPC_URL);
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(Game)
+    private readonly gameRepo: Repository<Game>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+  ) {}
 
+  private readonly logger = new Logger(BlockchainService.name);
+  
+  async onModuleInit() {
+    const contractAddress = this.configService.get<string>("CONTRACT_ADDRESS");
+    const rpcUrl = this.configService.get<string>("RPC_URL_WS"); 
+    
+    if (!contractAddress || !rpcUrl) {
+      throw new Error('Missing CONTRACT_ADDRESS or RPC_URL_WS in env');
+    }
+
+    this.provider = new WebSocketProvider(rpcUrl);
     this.contract = new Contract(
-      CONTRACT_ADDRESS,
+      contractAddress,
       BalanceGameJson.abi,
       this.provider
     );
@@ -35,13 +55,28 @@ export class BlockchainService implements OnModuleInit {
   }
 
   listenToEvents() {
-    this.contract.on('NewGame', (gameId, questionA, questionB, deadline, creator) => {
-      console.log('🔥 NewGame 이벤트 감지됨');
-      console.log('Game ID:', gameId.toString());
-      console.log('A:', questionA);
-      console.log('B:', questionB);
-      console.log('마감시간:', deadline.toString());
-      console.log('생성자:', creator);
+    this.contract.on('NewGame', async (gameId, questionA, questionB, deadline, creator) => {
+      // DB저장시 GameId 부분이 같이 저장되도록 수정해야됨
+      const deadlineToDate = new Date(Number(deadline) * 1000);
+      const user = await this.userRepo.findOne({
+        where: { address: creator },
+        select: { id: true }
+      });
+
+      if (!user) {
+        this.logger.warn("GameSaveError: unknown Address " + creator);
+      }
+      else {
+        const game = this.gameRepo.create({
+          optoinA: questionA,
+          optionB: questionB,
+          deadline: deadlineToDate,
+          createdBy: user.id
+        });
+
+        this.gameRepo.save(game);
+        this.logger.log("GameSaveSuccess: GameId " + gameId);
+      }
     });
   }
 }

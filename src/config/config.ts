@@ -6,3 +6,5 @@ export default () => ({
     DB_DATABASE: process.env.DB_DATABASE,
     MONGO_URI: process.env.MONGO_URI
 });
+
+// ENV 작성 해주기

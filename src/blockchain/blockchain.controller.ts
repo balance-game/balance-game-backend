@@ -5,7 +5,4 @@ import { BlockchainService } from './blockchain.service';
 export class BlockchainController {
     constructor(private readonly blockChainService: BlockchainService) {}
 
-    @Get("/event")
-    getEvent() {
-    }
 }
