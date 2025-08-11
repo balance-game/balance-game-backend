@@ -13,20 +13,7 @@ import { BalanceGame } from './typechain-types';
 // TypeChain 추후 분리 예정
 import { BalanceGame__factory } from './typechain-types';
 
-/**
- *
- * 2025-08-05 Memo
- * 1. 좋아요 내가 좋아요 누른건지 구별하는 칼럼 반환하도록 수정하기 O
- * 2. DB에 게임정보 저장하도록 하기 (blockchain) O 
- * 3. 투표한 사람 정보 저장 (blockchain) O
- * 4. 내 정보 반환할때 투표 및 상대방 조회기능도 만들기 O
- * 5. 백엔드 API 업데이트 하기 
- * 6. Redis 캐시화 하기 
- * 7. Nest 배치로 주기적으로 조회하기
- * 8. 서버 꺼졌을때 이벤트 복구 기능
- * 
- */
-
+// 서버 재 부팅시 앞전 이벤트 긁어오는 로직 필요
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private provider: WebSocketProvider;
@@ -78,16 +65,16 @@ export class BlockchainService implements OnModuleInit {
           this.logger.warn("GameSaveError: unknown Address " + creator);
         }
         else {
-          // const game = this.gameRepo.create({
-          //   id: gameId,
-          //   optionA: questionA,
-          //   optionB: questionB,
-          //   deadline: deadlineToDate,
-          //   createdBy: user.id
-          // });
+          const game = this.gameRepo.create({
+            id: gameId.toString(),
+            optionA: questionA,
+            optionB: questionB,
+            deadline: deadlineToDate,
+            createdBy: user.id
+          });
 
-          // this.gameRepo.save(game);
-          // this.logger.log("GameSaveSuccess: GameId " + gameId);
+          this.gameRepo.save(game);
+          this.logger.log("GameSaveSuccess: GameId " + gameId);
         }
 
         await queryRunner.commitTransaction();
@@ -112,14 +99,14 @@ export class BlockchainService implements OnModuleInit {
           this.logger.warn("VoteSaveError: unknown Address " + address);
         }
         else {
-          // const vote = queryRunner.manager.create(Vote, {
-          //   gameId: gameId,
-          //   userId: user.id,
-          //   option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
-          // });
+          const vote = queryRunner.manager.create(Vote, {
+            gameId: gameId.toString(),
+            userId: user.id,
+            option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
+          });
 
-          // const voteResult = await queryRunner.manager.save(vote);
-          // this.logger.log("VoteSaveSuccess: VoteId " + voteResult.id);
+          const voteResult = await queryRunner.manager.save(vote);
+          this.logger.log("VoteSaveSuccess: VoteId " + voteResult.id);
         }
 
         await queryRunner.commitTransaction();
@@ -131,7 +118,8 @@ export class BlockchainService implements OnModuleInit {
     });
   }
   
-  @Cron('* * * * * *')
+  // 1분에 한번씩 온체인 데이터 반영
+  @Cron('* * * * *')
   async getVoteCountFromOnchain() {
     const now = new Date();
 
@@ -142,8 +130,15 @@ export class BlockchainService implements OnModuleInit {
     });
 
     for(const game of gameList) {
-      const gameInfo = await this.contract.findGameById(game.id);
-      console.log(gameInfo);
+      try {
+        const gameInfo = await this.contract.findGameById(game.id);
+        
+        game.voteCountA = gameInfo[4].toString();
+        game.voteCountB = gameInfo[5].toString();
+        await this.gameRepo.save(game);
+      } catch(err) {
+        console.error("온체인 데이터 반영 실패" + err);
+      }
     }
   }
 }

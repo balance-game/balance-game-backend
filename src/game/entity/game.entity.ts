@@ -9,7 +9,7 @@ export class Game {
     id: string;
 
     @Column({ type: "varchar", name: "option_a", length: 255 })
-    optoinA: string;
+    optionA: string;
 
     @Column({ type: "varchar", name: "option_b", length: 255 })
     optionB: string;
@@ -17,11 +17,11 @@ export class Game {
     @CreateDateColumn({ type: "timestamp", name: "created_at" })
     createdAt: Date;
 
-    @Column({ type: "int", name: "vote_count_a", default: 0, nullable: false })
-    voteCountA: number;
+    @Column({ type: "bigint", name: "vote_count_a", default: 0, nullable: false })
+    voteCountA: string;
 
-    @Column({ type: "int", name: "vote_count_b", default: 0, nullable: false })
-    voteCountB: number;
+    @Column({ type: "bigint", name: "vote_count_b", default: 0, nullable: false })
+    voteCountB: string;
 
     @Column({ type: "bigint", name: "created_by" })
     createdBy: string
