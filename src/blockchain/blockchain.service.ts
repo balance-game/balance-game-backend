@@ -7,8 +7,6 @@ import { Game } from 'src/game/entity/game.entity';
 import { Repository } from 'typeorm';
 import { User } from 'src/auth/entity/user.entity';
 
-const CONTRACT_ADDRESS = '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512';
-
 /**
  *
  * 2025-08-05 Memo
@@ -56,7 +54,6 @@ export class BlockchainService implements OnModuleInit {
 
   listenToEvents() {
     this.contract.on('NewGame', async (gameId, questionA, questionB, deadline, creator) => {
-      // DB저장시 GameId 부분이 같이 저장되도록 수정해야됨
       const deadlineToDate = new Date(Number(deadline) * 1000);
       const user = await this.userRepo.findOne({
         where: { address: creator },
@@ -68,6 +65,7 @@ export class BlockchainService implements OnModuleInit {
       }
       else {
         const game = this.gameRepo.create({
+          id: gameId,
           optoinA: questionA,
           optionB: questionB,
           deadline: deadlineToDate,

@@ -5,7 +5,7 @@ import { Vote } from "./vote.entity";
 
 @Entity("game")
 export class Game {
-    @PrimaryGeneratedColumn({ type: "bigint" })
+    @PrimaryColumn({ type: "bigint" })
     id: number;
 
     @Column({ type: "varchar", name: "option_a", length: 255 })
