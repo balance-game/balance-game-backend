@@ -76,7 +76,7 @@ export class BlockchainService implements OnModuleInit {
         else {
           const game = this.gameRepo.create({
             id: gameId,
-            optoinA: questionA,
+            optionA: questionA,
             optionB: questionB,
             deadline: deadlineToDate,
             createdBy: user.id

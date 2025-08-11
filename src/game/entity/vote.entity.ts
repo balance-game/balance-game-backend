@@ -1,17 +1,18 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { VoteOption } from "../enum/vote-option.enum";
 import { User } from "src/auth/entity/user.entity";
 import { Game } from "./game.entity";
 
 @Entity("vote")
+@Unique(['userId', 'gameId'])
 export class Vote {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ name: "user_id", unique: true })
+    @Column({ name: "user_id" })
     userId: number;
 
-    @Column({ name: "game_id", unique: true })
+    @Column({ name: "game_id" })
     gameId: number;
 
     @Column({ type: "enum", enum: VoteOption, nullable: false })

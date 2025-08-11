@@ -136,6 +136,7 @@ export class AuthService {
       where: { id: userId },
       select: { name: true, address: true }
     });
+    
     if (user) {
       return user;
     }

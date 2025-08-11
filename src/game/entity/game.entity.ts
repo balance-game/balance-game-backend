@@ -9,7 +9,7 @@ export class Game {
     id: number;
 
     @Column({ type: "varchar", name: "option_a", length: 255 })
-    optoinA: string;
+    optionA: string;
 
     @Column({ type: "varchar", name: "option_b", length: 255 })
     optionB: string;

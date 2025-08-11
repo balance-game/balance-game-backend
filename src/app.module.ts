@@ -11,6 +11,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { BlockchainService } from './blockchain/blockchain.service';
 import { BlockchainModule } from './blockchain/blockchain.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -37,7 +38,7 @@ import { BlockchainModule } from './blockchain/blockchain.module';
       }),
       inject: [ConfigService]
     }),
-    AuthModule, GameModule, NotificationModule, CommentModule, BlockchainModule
+    AuthModule, GameModule, NotificationModule, CommentModule, BlockchainModule, UserModule
   ],
   controllers: [AppController],
   providers: [AppService],
