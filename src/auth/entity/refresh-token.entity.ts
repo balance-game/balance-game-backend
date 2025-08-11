@@ -4,7 +4,7 @@ import { User } from "./user.entity";
 @Entity("refresh_token")
 export class RefreshToken {
     @PrimaryGeneratedColumn({ type: "bigint" })
-    id: number;
+    id: string;
 
     @Column({ unique: true, type: "varchar", length: 255, nullable: false })
     token: string;

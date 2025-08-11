@@ -17,7 +17,7 @@ export class UserController {
     }
 
     @Get("/:id")
-    getUserProfile(@Param("id", ParseIntPipe) id: number) {
+    getUserProfile(@Param("id") id: string) {
         return this.userService.getUserProfile(id);
     }
 }

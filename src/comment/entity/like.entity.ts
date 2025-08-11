@@ -5,11 +5,11 @@ import { Comment } from "./comment.entity";
 
 @Entity("like")
 export class Like {
-    @PrimaryColumn({ name: "user_id" })
-    userId;
+    @PrimaryColumn({ name: "user_id", type: "bigint" })
+    userId: string;
 
-    @PrimaryColumn({ name: "comment_id" })
-    commentId;
+    @PrimaryColumn({ name: "comment_id", type: "bigint" })
+    commentId: string;
 
     @Column({ type: "enum", enum: LikeType, nullable: false })
     type: LikeType;

@@ -6,10 +6,10 @@ import { Column, CreateDateColumn, DeleteDateColumn, Entity,JoinColumn,ManyToOne
 @Entity("comment")
 export class Comment {
     @PrimaryGeneratedColumn({ type: "bigint" })
-    id: number;
+    id: string;
 
     @Column({ type: "bigint", name: "game_id", nullable: false })
-    gameId: number;
+    gameId: string;
 
     @ManyToOne(() => Game, (game) => game.comments)
     @JoinColumn({ name: "game_id", referencedColumnName: "id"})
@@ -19,14 +19,14 @@ export class Comment {
     content: string;
 
     @Column({ name: 'author', type: 'bigint', nullable: false })
-    author: number;
+    author: string;
 
     @ManyToOne(() => User, (user) => user.comments)
     @JoinColumn({ name: "author", referencedColumnName: "id" })
     user: User;
 
     @Column({ type: "bigint", name: "parent_id", nullable: true })
-    parentId: number | null;
+    parentId: string | null;
 
     @CreateDateColumn({ type: "timestamp", name: "created_at", nullable: false})
     createdAt: Date;

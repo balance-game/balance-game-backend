@@ -6,14 +6,14 @@ import { Game } from "./game.entity";
 @Entity("vote")
 @Unique(['userId', 'gameId'])
 export class Vote {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn({ type: "bigint" })
+    id: string;
 
-    @Column({ name: "user_id" })
-    userId: number;
+    @Column({ name: "user_id", type: "bigint"})
+    userId: string;
 
-    @Column({ name: "game_id" })
-    gameId: number;
+    @Column({ name: "game_id", type: "bigint" })
+    gameId: string;
 
     @Column({ type: "enum", enum: VoteOption, nullable: false })
     option: VoteOption;

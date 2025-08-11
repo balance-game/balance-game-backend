@@ -3,8 +3,11 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "t
 
 @Entity("notification")
 export class Notification {
-    @PrimaryGeneratedColumn()
-    id: number
+    @PrimaryGeneratedColumn({ type: "bigint" })
+    id: string
+
+    @Column({ name: "user_id", type: "bigint" })
+    user_id: string;
 
     @ManyToOne(() => User, (user) => user.notifications)
     @JoinColumn({ name: "user_id", referencedColumnName: "id" })

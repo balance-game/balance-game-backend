@@ -97,7 +97,7 @@ export class GameService {
         }
     }
 
-    async getGame(_user: jwtUser, id: number) {
+    async getGame(_user: jwtUser, id: string) {
         try {
             const game = await this.gameRepo.find({
                 where: { id: id },

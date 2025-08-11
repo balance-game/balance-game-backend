@@ -21,7 +21,7 @@ export class GameController {
   
   @Get("/:id")
   @UseGuards(OptionalAuthGuard)
-  getGame(@GetUser() user, @Param("id", ParseIntPipe) id: number) {
+  getGame(@GetUser() user, @Param("id") id: string) {
     return this.gameService.getGame(user, id);
   }
 }

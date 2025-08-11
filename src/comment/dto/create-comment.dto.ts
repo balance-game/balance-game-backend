@@ -4,12 +4,12 @@ import { IsNumber, IsOptional, IsString } from "class-validator";
 export class CreateComment {
     @IsNumber()
     @Expose({ name: "game_id" })
-    gameId: number
+    gameId: string
 
     @IsOptional()
     @IsNumber()
     @Expose({ name: "parent_id" })
-    parentId: number | null;
+    parentId: string | null;
 
     @IsString()
     content: string;

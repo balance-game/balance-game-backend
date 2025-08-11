@@ -10,7 +10,7 @@ import { Vote } from "src/game/entity/vote.entity";
 @Entity("user")
 export class User {
   @PrimaryGeneratedColumn({ type: "bigint" })
-  id: number;
+  id: string;
 
   @Column({ unique: true, type: "varchar", length: 42, nullable: false })
   address: string;

@@ -30,7 +30,7 @@ export class AuthService {
   ) {}
 
   async getNonce(dto: GetNonce) {
-    const nonce = Math.floor(Math.random() * 1000000000000);
+    const nonce = (Math.floor(Math.random() * 1000000000000)).toString();
     const expiryDate = new Date(Date.now() + 3 * 60 * 1000);
 
     try {
@@ -82,7 +82,7 @@ export class AuthService {
         await queryRunner.manager.save(user);
       }
 
-      const payload = { userId: user.id };
+      const payload = { userId: user.id.toString() };
       const accessToken = this.generateAccessToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
       const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -110,7 +110,7 @@ export class AuthService {
 
   async newAccessToken(refreshTokenId: number) {
     const findRefreshToken =  await this.refreshTokenRepo.findOne({ 
-      where: { id: refreshTokenId },
+      where: { id: refreshTokenId.toString() },
       relations: ["user"]
     });
 
@@ -131,9 +131,9 @@ export class AuthService {
     }
   }
 
-  async me(userId: number) {
+  async me(userId: string) {
     const user = await this.userRepo.findOne({ 
-      where: { id: userId },
+      where: { id: userId.toString() },
       select: { name: true, address: true }
     });
     
@@ -147,8 +147,8 @@ export class AuthService {
 
   // 다른 유저 조회
 
-  async editUserName(userId: number, dto: EditUser) {
-    let user = await this.userRepo.findOne({ where: { id: userId } });
+  async editUserName(userId: string, dto: EditUser) {
+    let user = await this.userRepo.findOne({ where: { id: userId.toString() } });
     if (user) {
       const findExistUser = await this.userRepo.findOne({ where: { name: dto.name } });
       if (findExistUser) {
@@ -166,9 +166,9 @@ export class AuthService {
     }
   }
 
-  async deleteUser(userId: number) {
+  async deleteUser(userId: string) {
     const user = await this.userRepo.findOne({ 
-      where: { id: userId },
+      where: { id: userId.toString() },
       relations: ["refreshToken"]
     });
     if (user) {

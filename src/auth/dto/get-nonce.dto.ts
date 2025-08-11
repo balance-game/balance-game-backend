@@ -1,4 +1,4 @@
-import { IsEthereumAddress, IsString } from "class-validator";
+import { IsEthereumAddress } from "class-validator";
 
 export class GetNonce {
     @IsEthereumAddress()

@@ -6,7 +6,7 @@ export class Nonce {
   address: string;
 
   @Column({ type: "bigint", nullable: false })
-  nonce: number;
+  nonce: string;
 
   @Column({ name: "expiry_date", type: "timestamp", nullable: false })
   expiryDate: Date;

@@ -5,11 +5,11 @@ import { Vote } from "./vote.entity";
 
 @Entity("game")
 export class Game {
-    @PrimaryColumn({ type: "bigint" })
-    id: number;
+    @PrimaryGeneratedColumn({ type: "bigint" })
+    id: string;
 
     @Column({ type: "varchar", name: "option_a", length: 255 })
-    optionA: string;
+    optoinA: string;
 
     @Column({ type: "varchar", name: "option_b", length: 255 })
     optionB: string;
@@ -24,7 +24,7 @@ export class Game {
     voteCountB: number;
 
     @Column({ type: "bigint", name: "created_by" })
-    createdBy: number
+    createdBy: string
 
     @Column({ type: "timestamp" })
     deadline: Date

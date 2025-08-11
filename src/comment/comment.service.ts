@@ -65,7 +65,7 @@ export class CommentService {
         }
     }
 
-    async editComment(user: jwtUser, id: number, dto: EditComment) {
+    async editComment(user: jwtUser, id: string, dto: EditComment) {
         try {
             return await this.dataSource.transaction(async (manager) => {
                 const comment = await manager.findOne(Comment, { where: { id: id } });
@@ -110,7 +110,7 @@ export class CommentService {
         }
     }
 
-    async deleteComment(user: jwtUser, commentId: number) {
+    async deleteComment(user: jwtUser, commentId: string) {
         try {
             await this.dataSource.transaction(async (manager) => {
                 const comment = await manager.findOne(Comment, { where: { id: commentId } });
@@ -135,7 +135,7 @@ export class CommentService {
         }
     }
 
-    async handleCommentLike(user: jwtUser, commentId: number, type: LikeType) {
+    async handleCommentLike(user: jwtUser, commentId: string, type: LikeType) {
         try {
             let likedByUser;
             let comment;
@@ -196,7 +196,7 @@ export class CommentService {
         }
     }
 
-    async commentLikeCount(commentId: number) {
+    async commentLikeCount(commentId: string) {
         return await this.likeRepo.query(`
             SELECT t.type, COUNT(l.comment_id) AS count
             FROM (SELECT 'LIKE' AS type UNION ALL SELECT 'DISLIKE') t
@@ -206,7 +206,7 @@ export class CommentService {
         `, [commentId]);
     }
 
-    async getComment(user: jwtUser,gameId: number) {
+    async getComment(user: jwtUser,gameId: string) {
         const userId = user ? user.userId : 0;
 
         const subQuery = this.likeRepo

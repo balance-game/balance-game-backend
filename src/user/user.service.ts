@@ -19,6 +19,7 @@ export class UserService {
             const userInfo = await this.userRepo.findOne({
                 where: { id: user.userId },
                 select: { 
+                    id: true,
                     address: true,
                     name: true,
                     createdAt: true
@@ -54,7 +55,7 @@ export class UserService {
         }
     }
 
-    async getUserProfile(id: number) {
+    async getUserProfile(id: string) {
         try {
             const userInfo = await this.userRepo.findOne({
                 where: { id: id },
