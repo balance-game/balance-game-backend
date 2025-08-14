@@ -1,19 +1,19 @@
-import { Injectable, InternalServerErrorException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { WebSocketProvider } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
 import { DataSource, MoreThan, Repository } from 'typeorm';
-import { User } from 'src/auth/entity/user.entity';
-import { Vote } from 'src/game/entity/vote.entity';
-import { VoteOption } from 'src/game/enum/vote-option.enum';
 import { Cron } from '@nestjs/schedule';
 import { BalanceGame } from './typechain-types';
 
 // TypeChain 추후 분리 예정
 import { BalanceGame__factory } from './typechain-types';
+import { Blockchain } from './entity/blockchain.entity';
+import { NewGameEvent, NewVoteEvent } from './typechain-types/contracts/BalanceGame';
+import { handleNewGame } from './util/event/handleNewGame';
+import { handleNewVote } from './util/event/handleNewVote';
 
-// 서버 재 부팅시 앞전 이벤트 긁어오는 로직 필요
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private provider: WebSocketProvider;
@@ -23,8 +23,8 @@ export class BlockchainService implements OnModuleInit {
     private readonly configService: ConfigService,
     @InjectRepository(Game)
     private readonly gameRepo: Repository<Game>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    @InjectRepository(Blockchain)
+    private readonly blockChainRepo: Repository<Blockchain>,
     private readonly dataSource: DataSource
   ) {}
 
@@ -38,83 +38,67 @@ export class BlockchainService implements OnModuleInit {
       throw new Error('Missing CONTRACT_ADDRESS or RPC_URL_WS in env');
     }
 
-    this.provider = new WebSocketProvider(rpcUrl);
-    this.contract = BalanceGame__factory.connect(
-      contractAddress,
-      this.provider
-    );
+    try {
+      this.provider = new WebSocketProvider(rpcUrl);
+      this.contract = BalanceGame__factory.connect(
+        contractAddress,
+        this.provider
+      );
+    } catch(err) {
+      console.error(err);
+      throw new Error("Connection failed to contract");
+    }
 
+    await this.recoverEvents();
     this.listenToEvents();
   }
 
-  listenToEvents() {
-    this.contract.on(this.contract.getEvent("NewGame"), async (gameId, questionA, questionB, deadline, creator) => {
-      const deadlineToDate = new Date(Number(deadline) * 1000);
+  // 이벤트 복구
+  async recoverEvents() {
+    let fromBlock;
+    const toBlock = "latest";
+    const eventFilters = [
+      this.contract.filters.NewGame(),
+      this.contract.filters.NewVote(),
+    ];
 
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        const user = await this.userRepo.findOne({
-          where: { address: creator },
-          select: { id: true }
-        });
-
-        if (!user) {
-          this.logger.warn("GameSaveError: unknown Address " + creator);
-        }
-        else {
-          const game = this.gameRepo.create({
-            id: gameId.toString(),
-            optionA: questionA,
-            optionB: questionB,
-            deadline: deadlineToDate,
-            createdBy: user.id
-          });
-
-          this.gameRepo.save(game);
-          this.logger.log("GameSaveSuccess: GameId " + gameId);
-        }
-
-        await queryRunner.commitTransaction();
-      } catch(err) {
-        await queryRunner.rollbackTransaction();
-        console.error(err);
-        throw new InternalServerErrorException("게임정보 저장중 오류가 발생했습니다.");
+    // 현재 네트워크 한개로 고정
+    const chainInfo = await this.blockChainRepo.findOne({ where: { id: 1 } });
+    if (chainInfo) {
+      const latestBlock = await this.contract.runner!.provider!.getBlock("latest")
+      // 같은 경우 패스
+      if (chainInfo.lastBlockNumber == latestBlock!.number.toString()) {
+        return;
       }
+      else {
+        fromBlock = BigInt(chainInfo.lastBlockNumber);
+      }
+    }
+    else {
+      fromBlock = 0;
+    }
+    
+    // 이벤트 복구
+  }
+
+  // 블록체인 이벤트 등록
+  listenToEvents() {
+    this.contract.on(this.contract.getEvent("NewGame"), async (...args) => {
+      const event = args[args.length - 1] as NewGameEvent.Log;
+      if (!event) { 
+        return;
+      }
+      await handleNewGame(event, this.dataSource, this.logger);
+      await this.saveBlockNumber(event);
     });
 
-    this.contract.on(this.contract.getEvent("NewVote"), async (gameId, address, voteOpttion) => {
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        const user = await queryRunner.manager.findOne(User, { 
-          where: { address: address }
-        });
-
-        if (!user) {
-          this.logger.warn("VoteSaveError: unknown Address " + address);
-        }
-        else {
-          const vote = queryRunner.manager.create(Vote, {
-            gameId: gameId.toString(),
-            userId: user.id,
-            option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
-          });
-
-          const voteResult = await queryRunner.manager.save(vote);
-          this.logger.log("VoteSaveSuccess: VoteId " + voteResult.id);
-        }
-
-        await queryRunner.commitTransaction();
-      } catch(err) {
-        await queryRunner.rollbackTransaction();
-        console.error(err);
-        throw new InternalServerErrorException("투표 정보 저장중 오류가 발생했습니다.");
+    this.contract.on(this.contract.getEvent("NewVote"), async (...args) => {
+      const event = args[args.length - 1] as NewVoteEvent.Log;
+      if (!event) {
+        return;
       }
+      await handleNewVote(event, this.dataSource, this.logger);
+      await this.saveBlockNumber(event);
     });
   }
   
@@ -140,5 +124,19 @@ export class BlockchainService implements OnModuleInit {
         console.error("온체인 데이터 반영 실패" + err);
       }
     }
+  }
+
+  // 마지막 블록번호 저장
+  async saveBlockNumber(event: 
+    NewGameEvent.Log | 
+    NewVoteEvent.Log
+  ) {
+    const network = await this.contract.runner!.provider!.getNetwork();
+    await this.blockChainRepo.upsert({
+      chainId: network.chainId.toString(),
+      chainName: network.name,
+      lastBlockNumber: (await event.getBlock()).number.toString()
+    },
+    ['chainId']);
   }
 }

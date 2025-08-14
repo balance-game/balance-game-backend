@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
 import { User } from 'src/auth/entity/user.entity';
 import { Vote } from 'src/game/entity/vote.entity';
+import { Blockchain } from './entity/blockchain.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Game, User, Vote])],
+  imports: [TypeOrmModule.forFeature([Game, User, Vote, Blockchain])],
   providers: [BlockchainService],
   controllers: [BlockchainController]
 })
