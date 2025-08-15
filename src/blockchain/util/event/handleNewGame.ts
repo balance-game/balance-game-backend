@@ -7,7 +7,8 @@ import { DataSource } from "typeorm/data-source";
 export async function handleNewGame(
   event: NewGameEvent.Log,
   dataSource: DataSource,
-  logger: Logger
+  logger: Logger,
+  saveBlockNumber
 ) {
   const [gameId, questionA, questionB, deadline, creator] = event.args;
   const deadlineToDate = new Date(Number(deadline) * 1000);
@@ -34,6 +35,8 @@ export async function handleNewGame(
       });
 
       await queryRunner.manager.save(game);
+      const blockNumber = (await event.getBlock()).number.toString();
+      await saveBlockNumber(blockNumber, queryRunner);
       logger.log("GameSaveSuccess: GameId " + gameId);
     }
 

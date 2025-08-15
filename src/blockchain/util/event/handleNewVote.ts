@@ -8,7 +8,8 @@ import { DataSource } from "typeorm/data-source";
 export async function handleNewVote(
   event: NewVoteEvent.Log,
   dataSource: DataSource,
-  logger: Logger
+  logger: Logger,
+  saveBlockNumber: any
 ) {
     const [gameId, address, voteOpttion] = event.args;
     const queryRunner = dataSource.createQueryRunner();
@@ -16,25 +17,27 @@ export async function handleNewVote(
     await queryRunner.startTransaction();
 
     try {
-    const user = await queryRunner.manager.findOne(User, { 
-        where: { address: address }
-    });
-
-    if (!user) {
-        logger.warn("VoteSaveError: unknown Address " + address);
-    }
-    else {
-        const vote = queryRunner.manager.create(Vote, {
-        gameId: gameId.toString(),
-        userId: user.id,
-        option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
+        const user = await queryRunner.manager.findOne(User, { 
+            where: { address: address }
         });
 
-        const voteResult = await queryRunner.manager.save(vote);
-        logger.log("VoteSaveSuccess: VoteId " + voteResult.id);
-    }
-    
-    await queryRunner.commitTransaction();
+        if (!user) {
+            logger.warn("VoteSaveError: unknown Address " + address);
+        }
+        else {
+            const vote = queryRunner.manager.create(Vote, {
+                gameId: gameId.toString(),
+                userId: user.id,
+                option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
+            });
+
+            const voteResult = await queryRunner.manager.save(vote);
+            const blockNumber = (await event.getBlock()).number.toString();
+            await saveBlockNumber(blockNumber, queryRunner);
+            logger.log("VoteSaveSuccess: VoteId " + voteResult.id);
+        }
+        
+        await queryRunner.commitTransaction();
     } catch(err) {
         await queryRunner.rollbackTransaction();
         console.error(err);
