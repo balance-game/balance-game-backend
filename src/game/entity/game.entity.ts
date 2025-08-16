@@ -14,7 +14,7 @@ export class Game {
     @Column({ type: "varchar", name: "option_b", length: 255 })
     optionB: string;
 
-    @CreateDateColumn({ type: "timestamp", name: "created_at" })
+    @Column({ type: "timestamp", name: "created_at" })
     createdAt: Date;
 
     @Column({ type: "bigint", name: "vote_count_a", default: 0, nullable: false })

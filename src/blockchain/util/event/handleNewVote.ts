@@ -11,7 +11,7 @@ export async function handleNewVote(
   logger: Logger,
   saveBlockNumber: any
 ) {
-    const [gameId, address, voteOpttion] = event.args;
+    const [gameId, address, voteOpttion, votedAt] = event.args;
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -28,7 +28,8 @@ export async function handleNewVote(
             const vote = queryRunner.manager.create(Vote, {
                 gameId: gameId.toString(),
                 userId: user.id,
-                option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B
+                option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B,
+                votedAt: new Date(Number(votedAt) * 1000)
             });
 
             const voteResult = await queryRunner.manager.save(vote);

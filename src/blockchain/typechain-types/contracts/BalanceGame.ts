@@ -28,7 +28,7 @@ export interface BalanceGameInterface extends Interface {
     nameOrSignature:
       | "COST"
       | "GAMEINDEX"
-      | "createVote"
+      | "createGame"
       | "findGameById"
       | "isContinue"
       | "owner"
@@ -41,7 +41,6 @@ export interface BalanceGameInterface extends Interface {
 
   getEvent(
     nameOrSignatureOrTopic:
-      | "GameFinished"
       | "NewGame"
       | "NewVote"
       | "OwnershipTransferred"
@@ -51,7 +50,7 @@ export interface BalanceGameInterface extends Interface {
   encodeFunctionData(functionFragment: "COST", values?: undefined): string;
   encodeFunctionData(functionFragment: "GAMEINDEX", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "createVote",
+    functionFragment: "createGame",
     values: [string, string, BigNumberish]
   ): string;
   encodeFunctionData(
@@ -86,7 +85,7 @@ export interface BalanceGameInterface extends Interface {
 
   decodeFunctionResult(functionFragment: "COST", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "GAMEINDEX", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "createVote", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "createGame", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "findGameById",
     data: BytesLike
@@ -109,23 +108,12 @@ export interface BalanceGameInterface extends Interface {
   ): Result;
 }
 
-export namespace GameFinishedEvent {
-  export type InputTuple = [gameId: BigNumberish];
-  export type OutputTuple = [gameId: bigint];
-  export interface OutputObject {
-    gameId: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
 export namespace NewGameEvent {
   export type InputTuple = [
     gameId: BigNumberish,
     questionA: string,
     questionB: string,
+    createdAt: BigNumberish,
     deadline: BigNumberish,
     creator: AddressLike
   ];
@@ -133,6 +121,7 @@ export namespace NewGameEvent {
     gameId: bigint,
     questionA: string,
     questionB: string,
+    createdAt: bigint,
     deadline: bigint,
     creator: string
   ];
@@ -140,6 +129,7 @@ export namespace NewGameEvent {
     gameId: bigint;
     questionA: string;
     questionB: string;
+    createdAt: bigint;
     deadline: bigint;
     creator: string;
   }
@@ -153,17 +143,20 @@ export namespace NewVoteEvent {
   export type InputTuple = [
     gameId: BigNumberish,
     votedAddress: AddressLike,
-    voteOpttion: BigNumberish
+    voteOpttion: BigNumberish,
+    votedAt: BigNumberish
   ];
   export type OutputTuple = [
     gameId: bigint,
     votedAddress: string,
-    voteOpttion: bigint
+    voteOpttion: bigint,
+    votedAt: bigint
   ];
   export interface OutputObject {
     gameId: bigint;
     votedAddress: string;
     voteOpttion: bigint;
+    votedAt: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -185,10 +178,10 @@ export namespace OwnershipTransferredEvent {
 }
 
 export namespace WhiteListUpdateEvent {
-  export type InputTuple = [arg0: AddressLike, status: boolean];
-  export type OutputTuple = [arg0: string, status: boolean];
+  export type InputTuple = [userAddress: AddressLike, status: boolean];
+  export type OutputTuple = [userAddress: string, status: boolean];
   export interface OutputObject {
-    arg0: string;
+    userAddress: string;
     status: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -244,22 +237,33 @@ export interface BalanceGame extends BaseContract {
 
   GAMEINDEX: TypedContractMethod<[], [bigint], "view">;
 
-  createVote: TypedContractMethod<
+  createGame: TypedContractMethod<
     [_questionA: string, _questionB: string, _deadline: BigNumberish],
-    [bigint],
+    [void],
     "payable"
   >;
 
   findGameById: TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [bigint, string, string, bigint, bigint, bigint, bigint, string] & {
+      [
+        bigint,
+        string,
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        string
+      ] & {
         id: bigint;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
         voteCountB: bigint;
         totalETH: bigint;
+        createAt: bigint;
         deadline: bigint;
         creator: string;
       }
@@ -304,10 +308,10 @@ export interface BalanceGame extends BaseContract {
     nameOrSignature: "GAMEINDEX"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "createVote"
+    nameOrSignature: "createGame"
   ): TypedContractMethod<
     [_questionA: string, _questionB: string, _deadline: BigNumberish],
-    [bigint],
+    [void],
     "payable"
   >;
   getFunction(
@@ -315,13 +319,24 @@ export interface BalanceGame extends BaseContract {
   ): TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [bigint, string, string, bigint, bigint, bigint, bigint, string] & {
+      [
+        bigint,
+        string,
+        string,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        bigint,
+        string
+      ] & {
         id: bigint;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
         voteCountB: bigint;
         totalETH: bigint;
+        createAt: bigint;
         deadline: bigint;
         creator: string;
       }
@@ -359,13 +374,6 @@ export interface BalanceGame extends BaseContract {
   >;
 
   getEvent(
-    key: "GameFinished"
-  ): TypedContractEvent<
-    GameFinishedEvent.InputTuple,
-    GameFinishedEvent.OutputTuple,
-    GameFinishedEvent.OutputObject
-  >;
-  getEvent(
     key: "NewGame"
   ): TypedContractEvent<
     NewGameEvent.InputTuple,
@@ -395,18 +403,7 @@ export interface BalanceGame extends BaseContract {
   >;
 
   filters: {
-    "GameFinished(uint256)": TypedContractEvent<
-      GameFinishedEvent.InputTuple,
-      GameFinishedEvent.OutputTuple,
-      GameFinishedEvent.OutputObject
-    >;
-    GameFinished: TypedContractEvent<
-      GameFinishedEvent.InputTuple,
-      GameFinishedEvent.OutputTuple,
-      GameFinishedEvent.OutputObject
-    >;
-
-    "NewGame(uint256,string,string,uint256,address)": TypedContractEvent<
+    "NewGame(uint256,string,string,uint256,uint256,address)": TypedContractEvent<
       NewGameEvent.InputTuple,
       NewGameEvent.OutputTuple,
       NewGameEvent.OutputObject
@@ -417,7 +414,7 @@ export interface BalanceGame extends BaseContract {
       NewGameEvent.OutputObject
     >;
 
-    "NewVote(uint256,address,uint8)": TypedContractEvent<
+    "NewVote(uint256,address,uint8,uint256)": TypedContractEvent<
       NewVoteEvent.InputTuple,
       NewVoteEvent.OutputTuple,
       NewVoteEvent.OutputObject

@@ -17,6 +17,7 @@ import { handleNewVote } from './util/event/handleNewVote';
 import { Vote } from 'src/game/entity/vote.entity';
 import { User } from 'src/auth/entity/user.entity';
 import { VoteOption } from 'src/game/enum/vote-option.enum';
+import { TypedContractEvent, TypedDeferredTopicFilter } from './typechain-types/common';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -27,7 +28,7 @@ export class BlockchainService implements OnModuleInit {
     private readonly configService: ConfigService,
     @InjectRepository(Game)
     private readonly gameRepo: Repository<Game>,
-      @InjectRepository(User)
+    @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Blockchain)
     private readonly blockChainRepo: Repository<Blockchain>,
@@ -63,7 +64,12 @@ export class BlockchainService implements OnModuleInit {
   async recoverEvents() {
     let fromBlock;
     const toBlock = "latest";
-    const eventFilters = [
+
+    type BalanceGameContractEventFilter =
+  | TypedContractEvent<NewGameEvent.InputTuple, NewGameEvent.OutputTuple, NewGameEvent.OutputObject>
+  | TypedContractEvent<NewVoteEvent.InputTuple, NewVoteEvent.OutputTuple, NewVoteEvent.OutputObject>;
+
+    const eventFilters: TypedDeferredTopicFilter<BalanceGameContractEventFilter>[] = [
       this.contract.filters.NewGame(),
       this.contract.filters.NewVote(),
     ];
@@ -84,39 +90,45 @@ export class BlockchainService implements OnModuleInit {
     let games: Partial<Game>[] = [];
     let votes: Partial<Vote>[] = [];
     for (const filter of eventFilters) {
-      const events =  await this.contract.queryFilter(filter, fromBlock, toBlock);
+      const events = await this.contract.queryFilter(filter, fromBlock, toBlock);
       for (const event of events) {
-        const args = event.args;
-
-        switch (event.eventName){
-          case "NewGame":
-            const newGameUser = await this.userRepo.findOne({ where : { address: args[4] }});
+        switch (event.eventName) {
+          case "NewGame": {
+            const args = event.args as NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
+            const newGameUser = await this.userRepo.findOne({ where : { address: args.creator }});
 
             if (!newGameUser) {
-              throw new Error("VoteSaveError: unknown Address" + args[1]);
+              throw new Error("VoteSaveError: unknown Address" + args.creator);
             }
             
             games.push({
-              id: args[0].toString(),
-              optionA: args[1],
-              optionB: args[2],
-              deadline: new Date(Number(args[3]) * 1000),
+              id: args.gameId.toString(),
+              optionA: args.questionA,
+              optionB: args.questionB,
+              createdAt: new Date(Number(args.createdAt) * 1000),
+              deadline: new Date(Number(args.deadline) * 1000),
               createdBy: newGameUser.id
             });
-            break;
 
-          case "NewVote":
-            const newVoteUser = await this.userRepo.findOne({ where : { address: args[1] }});
+            break;
+          }
+
+          case "NewVote": {
+            const args = event.args as NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
+            const newVoteUser = await this.userRepo.findOne({ where : { address: args.votedAddress }});
 
             if (!newVoteUser) {
-              throw new Error("VoteSaveError: unknown Address" + args[1]);
+              throw new Error("VoteSaveError: unknown Address" + args.votedAddress);
             }
             votes.push({
-              gameId: args[0].toString(),
+              gameId: args.gameId.toString(),
               userId: newVoteUser.id,
-              option: Number(args[2]) == 0 ? VoteOption.A : VoteOption.B
+              option: Number(args.voteOpttion) == 0 ? VoteOption.A : VoteOption.B,
+              votedAt: new Date(Number(args.votedAt) * 1000),
             });
+
             break;
+          }
         }
       }
     }

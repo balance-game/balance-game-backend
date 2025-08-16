@@ -10,7 +10,7 @@ export async function handleNewGame(
   logger: Logger,
   saveBlockNumber
 ) {
-  const [gameId, questionA, questionB, deadline, creator] = event.args;
+  const [gameId, questionA, questionB, createdAt, deadline, creator] = event.args;
   const deadlineToDate = new Date(Number(deadline) * 1000);
 
   const queryRunner = dataSource.createQueryRunner();
@@ -30,6 +30,7 @@ export async function handleNewGame(
         id: gameId.toString(),
         optionA: questionA,
         optionB: questionB,
+        createdAt: new Date(Number(createdAt) * 1000),
         deadline: deadlineToDate,
         createdBy: user.id
       });

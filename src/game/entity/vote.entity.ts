@@ -18,6 +18,9 @@ export class Vote {
     @Column({ type: "enum", enum: VoteOption, nullable: false })
     option: VoteOption;
 
+    @Column({ type: "timestamp", name: "voted_at" })
+    votedAt: Date;
+
     @ManyToOne(() => User, (user) => user.votes)
     @JoinColumn({ name: "user_id", referencedColumnName: "id" })
     user: User;
