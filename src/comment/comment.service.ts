@@ -10,6 +10,14 @@ import { Like } from './entity/like.entity';
 import { LikeType } from 'src/comment/enum/like-type.enum';
 import { Game } from 'src/game/entity/game.entity';
 
+/**
+ * 
+ * 2025-08-15 Memo
+ * 댓글 삭제시 대댓글 처리 추가하기
+ * 대대댓글 막기
+ * 총 댓글 수 반환 추가하기
+ * 
+ */
 @Injectable()
 export class CommentService {
     constructor(
@@ -275,7 +283,7 @@ export class CommentService {
                 co.parent_id,
                 u.name,
                 co.created_at
-            HAVING likeCount + dislikeCount + 15 >= 15
+            HAVING likeCount + dislikeCount >= 15
             ORDER BY (likeCount + dislikeCount) DESC, likeCount DESC
             LIMIT 3;
         `, [userId]);
@@ -284,7 +292,7 @@ export class CommentService {
         const allComent = await Promise.all(
             commentList.map(async (comment) => {
                 const replies = await qb
-                .where("co.parent_id = :parentId", { parentId: comment.comment_id })
+                .where("co.parent_id = :parentId", { parentId: comment.commentId })
                 .orderBy("co.created_at", "ASC")
                 .getRawMany();
 

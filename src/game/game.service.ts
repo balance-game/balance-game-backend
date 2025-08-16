@@ -8,6 +8,14 @@ import { Comment } from 'src/comment/entity/comment.entity';
 import { CommentService } from 'src/comment/comment.service';
 import { jwtUser } from 'src/common/interface/jwt-user';
 
+/**
+ * 
+ * 2025-08-16 Memo
+ * 끝난 게임 조회되는 오류 고치기
+ * KST로 변환해서 나오도록 하기
+ * 안쓰는 import문 지우기
+ * 
+ */
 @Injectable()
 export class GameService {
     constructor(
