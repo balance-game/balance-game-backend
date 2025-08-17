@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from './entity/game.entity';
-import { IsNull, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { GameSortType } from './enum/gameSortType.enum';
 import { GameStatusType } from './enum/gameStatusType.enum';
 import { Comment } from 'src/comment/entity/comment.entity';
@@ -79,6 +79,7 @@ export class GameService {
             .addSelect("game.vote_count_a + game.vote_count_b", "totalVotes")
             .orderBy("totalVotes", "DESC")
             .addOrderBy("game.createdAt", "DESC")
+            .andWhere("game.deadline > :now", { now: new Date() })
             .take(3)
             .getMany();
 

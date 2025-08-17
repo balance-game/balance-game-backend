@@ -1,4 +1,4 @@
-import { ConsoleLogger, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ConsoleLogger, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateComment } from './dto/create-comment.dto';
 import { DataSource, IsNull, Repository } from 'typeorm';
 import { User } from 'src/auth/entity/user.entity';
@@ -10,6 +10,12 @@ import { Like } from './entity/like.entity';
 import { LikeType } from 'src/comment/enum/like-type.enum';
 import { Game } from 'src/game/entity/game.entity';
 
+/**
+ * 
+ * 2025-08-18 Memo
+ * 댓글 삭제시 대댓글 처리 추가하기
+ * 
+ */
 @Injectable()
 export class CommentService {
     constructor(
@@ -35,8 +41,11 @@ export class CommentService {
                     where: { id: dto.parentId }
                 });
                 if (!existComment) {
-                    throw new NotFoundException("존재하지 않는 댓글입니다");
+                    throw new NotFoundException("존재하지 않는 댓글입니다.");
                 } 
+                if (existComment.parentId) {
+                    throw new ConflictException("대대댓글은 허용되지 않습니다.");
+                }
             }
 
             const comment = await this.commentRepo.save({
@@ -57,7 +66,7 @@ export class CommentService {
                 likedByUser: null
             }
         } catch(err) {
-            if (err instanceof NotFoundException) {
+            if (err instanceof NotFoundException || err instanceof ConflictException) {
                 throw err;
             }
             console.error(err);
@@ -275,16 +284,18 @@ export class CommentService {
                 co.parent_id,
                 u.name,
                 co.created_at
-            HAVING likeCount + dislikeCount + 15 >= 15
+            HAVING likeCount + dislikeCount >= 15
             ORDER BY (likeCount + dislikeCount) DESC, likeCount DESC
             LIMIT 3;
         `, [userId]);
+
+        const commentCount = commentList.length;
 
         // 대댓글 조회
         const allComent = await Promise.all(
             commentList.map(async (comment) => {
                 const replies = await qb
-                .where("co.parent_id = :parentId", { parentId: comment.comment_id })
+                .where("co.parent_id = :parentId", { parentId: comment.commentId })
                 .orderBy("co.created_at", "ASC")
                 .getRawMany();
 
@@ -295,7 +306,7 @@ export class CommentService {
             })
         );
 
-        return { top3Comment, allComent };
+        return { top3Comment, allComent, commentCount };
     }
 }
  
