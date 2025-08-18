@@ -277,6 +277,7 @@ export class CommentService {
                 SELECT comment_id, type FROM \`like\`
                 WHERE user_id = ?
             ) li_user_id ON li_user_id.comment_id = co.id
+            WHERE co.deleted_at is null
             GROUP BY
                 co.id,
                 co.game_id,
@@ -289,7 +290,7 @@ export class CommentService {
             LIMIT 3;
         `, [userId]);
 
-        const commentCount = commentList.length;
+        const allComentCount = await this.commentRepo.count();
 
         // 대댓글 조회
         const allComent = await Promise.all(
@@ -306,7 +307,7 @@ export class CommentService {
             })
         );
 
-        return { top3Comment, allComent, commentCount };
+        return { top3Comment, allComent, allComentCount };
     }
 }
  
