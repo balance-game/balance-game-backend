@@ -237,26 +237,27 @@ export class CommentService {
         .select([
             "co.id AS commentId",
             "co.game_id AS gameId",
-            "co.content AS content",
+            `CASE WHEN co.deleted_at IS NULL THEN co.content ELSE '삭제된 댓글입니다.' END AS content`,
             "co.parent_id AS parentId",
             "u.name AS author",
-            "co.created_at AS created_at",
+            "co.created_at AS createdAt",
+            `CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted`,
             `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likeCount`,
             `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikeCount`,
             `li_user_id.type AS likedByUser`
         ])
+        .withDeleted()
         .groupBy("co.id")
         .addGroupBy("co.game_id")
-        .addGroupBy("co.content")
         .addGroupBy("co.parent_id")
         .addGroupBy("u.name")
         .addGroupBy("co.created_at");
 
         // 전체 댓글 조회
         const commentList = await qb
-        .where("parent_id is null")
-        .orderBy("co.created_at", "DESC")
-        .getRawMany();
+            .where("parent_id is null")
+            .orderBy("co.created_at", "DESC")
+            .getRawMany();
 
         // top3 댓글 조회
         const top3Comment = await this.commentRepo.query(`
@@ -267,6 +268,7 @@ export class CommentService {
                 co.parent_id AS parentId,
                 u.name AS author,
                 co.created_at AS createdAt,
+                CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted,
                 SUM(CASE WHEN li.type = 'LIKE' THEN 1 ELSE 0 END) AS likeCount,
                 SUM(CASE WHEN li.type = 'DISLIKE' THEN 1 ELSE 0 END) AS dislikeCount,
                 li_user_id.type AS likedByUser
@@ -290,15 +292,43 @@ export class CommentService {
             LIMIT 3;
         `, [userId]);
 
+        for (let i = 0; i < top3Comment.length; i++) {
+            top3Comment[i].isDeleted = top3Comment[0].isDeleted == 1 ? true : false;
+        }
+
         const allComentCount = await this.commentRepo.count();
 
         // 대댓글 조회
         const allComent = await Promise.all(
             commentList.map(async (comment) => {
+                const commentIsDeleted = comment.isDeleted == 1 ? true : false;
+                comment.isDeleted = commentIsDeleted;
+
+                if (commentIsDeleted) {
+                    comment.author = null;
+                    comment.createdAt = null;
+                    comment.likeCount = null;
+                    comment.dislikeCount = null;
+                    comment.likedByUser = null;
+                }
+
                 const replies = await qb
-                .where("co.parent_id = :parentId", { parentId: comment.commentId })
-                .orderBy("co.created_at", "ASC")
-                .getRawMany();
+                    .where("co.parent_id = :parentId", { parentId: comment.commentId })
+                    .orderBy("co.created_at", "ASC")
+                    .getRawMany();
+
+                if (replies.length > 0) {
+                    const replyIsDeleted = replies[0].isDeleted == 1 ? true : false;
+                    replies[0].isDeleted = replyIsDeleted;
+
+                    if (replyIsDeleted) {
+                        replies[0].author = null;
+                        replies[0].createdAt = null;
+                        replies[0].likeCount = null;
+                        replies[0].dislikeCount = null;
+                        replies[0].likedByUser = null;
+                    }
+                }
 
                 return {
                     ...comment,
