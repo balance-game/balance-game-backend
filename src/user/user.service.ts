@@ -23,28 +23,16 @@ export class UserService {
                     address: true,
                     name: true,
                     createdAt: true
-                }
+                },
+                relations: ["votes", "games"]
             });
 
             if (!userInfo) {
                 throw new NotFoundException("존재하지 않는 유저입니다.");
             }
 
-            const votedList = await this.voteRepo
-            .createQueryBuilder('v')
-            .leftJoinAndSelect('v.game', 'g')
-            .select([
-                'v.game_id',
-                'g.option_a',
-                'g.option_b',
-                'v.option',
-            ])
-            .where('v.user_id = :userId', { userId: user.userId })
-            .getRawMany();
-
             return {
-                ...userInfo,
-                votedList
+                ...userInfo
             }
         } catch(err) {
             if (err instanceof NotFoundException) {
@@ -60,31 +48,20 @@ export class UserService {
             const userInfo = await this.userRepo.findOne({
                 where: { id: id },
                 select: { 
+                    id: true,
                     address: true,
                     name: true,
                     createdAt: true
-                }
+                },
+                relations: ["votes", "games"]
             });
 
             if (!userInfo) {
                 throw new NotFoundException("존재하지 않는 유저입니다.");
             }
 
-            const votedList = await this.voteRepo
-            .createQueryBuilder('v')
-            .leftJoinAndSelect('v.game', 'g')
-            .select([
-                'v.game_id',
-                'g.option_a',
-                'g.option_b',
-                'v.option',
-            ])
-            .where('v.user_id = :userId', { userId: id })
-            .getRawMany();
-
             return {
-                ...userInfo,
-                votedList
+                ...userInfo
             }
         } catch(err) {
             if (err instanceof NotFoundException) {
