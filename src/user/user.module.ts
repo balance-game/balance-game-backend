@@ -4,10 +4,13 @@ import { UserService } from './user.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Vote } from 'src/game/entity/vote.entity';
 import { User } from 'src/auth/entity/user.entity';
+import { ProfileImage } from './entity/profile-image.entity';
+import { R2Service } from 'src/infrastructure/r2.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Vote, User])],
+  imports: [TypeOrmModule.forFeature([Vote, User, ProfileImage]), HttpModule],
   controllers: [UserController],
-  providers: [UserService]
+  providers: [UserService, R2Service]
 })
 export class UserModule {}

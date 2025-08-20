@@ -219,39 +219,42 @@ export class CommentService {
         const userId = user ? user.userId : 0;
 
         const subQuery = this.likeRepo
-        .createQueryBuilder("like")
-        .select(["like.comment_id", "like.type as type"])
-        .where("like.user_id = :userId", { userId });
+            .createQueryBuilder("like")
+            .select(["like.comment_id", "like.type as type"])
+            .where("like.user_id = :userId", { userId });
 
         // 기본 조회
         let qb = this.commentRepo
-        .createQueryBuilder("co")
-        .leftJoin("co.user", "u")
-        .leftJoin("like", "li", "li.comment_id = co.id")
-        .leftJoin(
-            "(" + subQuery.getQuery() + ")",
-            "li_user_id",
-            "li_user_id.comment_id = co.id"
-        )
-        .setParameters(subQuery.getParameters())
-        .select([
-            "co.id AS commentId",
-            "co.game_id AS gameId",
-            `CASE WHEN co.deleted_at IS NULL THEN co.content ELSE '삭제된 댓글입니다.' END AS content`,
-            "co.parent_id AS parentId",
-            "u.name AS author",
-            "co.created_at AS createdAt",
-            `CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted`,
-            `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likeCount`,
-            `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikeCount`,
-            `li_user_id.type AS likedByUser`
-        ])
-        .withDeleted()
-        .groupBy("co.id")
-        .addGroupBy("co.game_id")
-        .addGroupBy("co.parent_id")
-        .addGroupBy("u.name")
-        .addGroupBy("co.created_at");
+            .createQueryBuilder("co")
+            .leftJoin("co.user", "u")
+            .leftJoin("like", "li", "li.comment_id = co.id")
+            .leftJoin(
+                "(" + subQuery.getQuery() + ")",
+                "li_user_id",
+                "li_user_id.comment_id = co.id"
+            )
+            .leftJoin("profile_image", "p", "u.id = p.user_id")
+            .setParameters(subQuery.getParameters())
+            .select([
+                "co.id AS commentId",
+                "co.game_id AS gameId",
+                `CASE WHEN co.deleted_at IS NULL THEN co.content ELSE '삭제된 댓글입니다.' END AS content`,
+                "co.parent_id AS parentId",
+                "u.name AS authorName",
+                "u.id AS authorId",
+                "p.url AS authorProfileImageName",
+                "co.created_at AS createdAt",
+                `CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted`,
+                `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likeCount`,
+                `SUM(CASE WHEN li.type = 'dislike' THEN 1 ELSE 0 END) AS dislikeCount`,
+                `li_user_id.type AS likedByUser`
+            ])
+            .withDeleted()
+            .groupBy("co.id")
+            .addGroupBy("co.game_id")
+            .addGroupBy("co.parent_id")
+            .addGroupBy("u.name")
+            .addGroupBy("co.created_at");
 
         // 전체 댓글 조회
         const commentList = await qb
@@ -266,7 +269,9 @@ export class CommentService {
                 co.game_id AS gameId,
                 co.content AS content,
                 co.parent_id AS parentId,
-                u.name AS author,
+                u.name AS authorName,
+                u.id AS authorId,
+                p.url AS authorProfileImageName,
                 co.created_at AS createdAt,
                 CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted,
                 SUM(CASE WHEN li.type = 'LIKE' THEN 1 ELSE 0 END) AS likeCount,
@@ -279,6 +284,7 @@ export class CommentService {
                 SELECT comment_id, type FROM \`like\`
                 WHERE user_id = ?
             ) li_user_id ON li_user_id.comment_id = co.id
+            LEFT JOIN profile_image p ON u.id = p.user_id 
             WHERE co.deleted_at is null
             GROUP BY
                 co.id,
@@ -296,7 +302,7 @@ export class CommentService {
             top3Comment[i].isDeleted = top3Comment[0].isDeleted == 1 ? true : false;
         }
 
-        const allComentCount = await this.commentRepo.count();
+        const allCommentCount = await this.commentRepo.count();
 
         // 대댓글 조회
         const allComent = await Promise.all(
@@ -306,6 +312,8 @@ export class CommentService {
 
                 if (commentIsDeleted) {
                     comment.author = null;
+                    comment.authorId = null;
+                    comment.authorProfileImageName = null;
                     comment.createdAt = null;
                     comment.likeCount = null;
                     comment.dislikeCount = null;
@@ -322,7 +330,9 @@ export class CommentService {
                     replies[0].isDeleted = replyIsDeleted;
 
                     if (replyIsDeleted) {
-                        replies[0].author = null;
+                        replies[0].authorName = null;
+                        replies[0].authorId = null;
+                        replies[0].authorProfileImageName = null;
                         replies[0].createdAt = null;
                         replies[0].likeCount = null;
                         replies[0].dislikeCount = null;
@@ -337,7 +347,7 @@ export class CommentService {
             })
         );
 
-        return { top3Comment, allComent, allComentCount };
+        return { top3Comment, allComent, allCommentCount };
     }
 }
  

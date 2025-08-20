@@ -32,6 +32,7 @@ export class AuthController {
     return this.authService.newAccessToken(refreshTokenId);
   }
 
+  // Profile Image
   @Get("/me")
   @UseGuards(AuthGuard("jwt"))
   me(@GetUser() user: jwtUser) {

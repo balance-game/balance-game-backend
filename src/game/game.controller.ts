@@ -19,6 +19,7 @@ export class GameController {
     return this.gameService.getTop3Games();
   }
   
+  // Profile Image
   @Get("/:id")
   @UseGuards(OptionalAuthGuard)
   getGame(@GetUser() user, @Param("id") id: string) {

@@ -132,16 +132,22 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    const user = await this.userRepo.findOne({ 
-      where: { id: userId.toString() },
-      select: { name: true, address: true }
-    });
-    
-    if (user) {
-      return user;
-    }
-    else {
-      throw new BadRequestException("존재하지 않는 유저입니다.");
+    try {
+      const user = await this.userRepo.findOne({ 
+        where: { id: userId.toString() },
+        select: { id: true, name: true, address: true },
+        relations: ["profileImage"]
+      });
+
+      if (user) {
+        return user;
+      }
+      else {
+        throw new BadRequestException("존재하지 않는 유저입니다.");
+      }
+    } catch(err) {
+      console.error(err);
+      throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
     }
   }
 

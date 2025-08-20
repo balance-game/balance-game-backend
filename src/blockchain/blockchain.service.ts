@@ -3,7 +3,7 @@ import { WebSocketProvider } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
-import { DataSource, MoreThan, QueryRunner, Repository } from 'typeorm';
+import { DataSource, LessThan, MoreThan, QueryRunner, Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { BalanceGame } from './typechain-types';
 
@@ -186,6 +186,7 @@ export class BlockchainService implements OnModuleInit {
       }
     });
 
+    // 투표 현황 반영
     for(const game of gameList) {
       try {
         const gameInfo = await this.contract.findGameById(game.id);
@@ -197,6 +198,17 @@ export class BlockchainService implements OnModuleInit {
         console.error("온체인 데이터 반영 실패" + err);
       }
     }
+
+
+    // 다른 CRON으로 분리 필요
+    // // 끝난 이벤트 추첨 요청하기
+    // const finishGames  = await this.gameRepo.find({
+    //   where: { deadline: LessThan(now) }
+    // });
+
+    // for(const game of finishGames) {
+    //   // 끝난이벤트 추첨 요청
+    // }
   }
 
   // 마지막 블록번호 저장

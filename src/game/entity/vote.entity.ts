@@ -9,7 +9,7 @@ export class Vote {
     @PrimaryGeneratedColumn({ type: "bigint" })
     id: string;
 
-    @Column({ name: "user_id", type: "bigint"})
+    @Column({ name: "user_id", type: "bigint", select: false})
     userId: string;
 
     @Column({ name: "game_id", type: "bigint" })
