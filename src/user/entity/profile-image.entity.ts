@@ -6,11 +6,11 @@ export class ProfileImage {
     @PrimaryGeneratedColumn({ type: "bigint" })
     id: string;
 
-    @Column({ type: "bigint", name: "user_id", unique: true, select: false })
+    @Column({ type: "bigint", name: "user_id", unique: true })
     userId: string;
 
-    @Column({ type: "varchar", name: "url", length: "255" })
-    url: string;
+    @Column({ type: "varchar", name: "image_name", length: "255" })
+    imageName: string;
     
     @OneToOne(() => User, (user) => user.profileImage)
     @JoinColumn({ name: "user_id", referencedColumnName: "id" })

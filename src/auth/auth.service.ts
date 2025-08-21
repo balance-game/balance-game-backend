@@ -12,6 +12,7 @@ import { User } from './entity/user.entity';
 import { EditUser } from './dto/edit-user.dto';
 import { v4 } from 'uuid';
 import { ethers } from 'ethers';
+import { ProfileImage } from 'src/user/entity/profile-image.entity';
 
 const signMessage = "Please login with";
 
@@ -71,10 +72,16 @@ export class AuthService {
         withDeleted: true
       });
 
+      // 회원가입 또는 탈퇴회원 재 가입 처리
       if (!user) {
         user = await queryRunner.manager.save(User, {
           address: dto.address,
           name: dto.address,
+        });
+
+        await queryRunner.manager.save(ProfileImage, {
+          userId: user.id,
+          fileName: "default.jpg"
         });
       }
       else if (user.deletedAt) {
@@ -82,6 +89,7 @@ export class AuthService {
         await queryRunner.manager.save(user);
       }
 
+      // 토큰 발급
       const payload = { userId: user.id.toString() };
       const accessToken = this.generateAccessToken(payload);
       const refreshToken = this.generateRefreshToken(payload);
@@ -134,17 +142,21 @@ export class AuthService {
   async me(userId: string) {
     try {
       const user = await this.userRepo.findOne({ 
-        where: { id: userId.toString() },
+        where: { id: userId },
         select: { id: true, name: true, address: true },
         relations: ["profileImage"]
       });
 
       if (user) {
-        return user;
+        return {
+          id: user.id,
+          address: user.address,
+          name: user.name,
+          profileImage: user.profileImage.imageName,
+        };
       }
-      else {
-        throw new BadRequestException("존재하지 않는 유저입니다.");
-      }
+
+      throw new BadRequestException("존재하지 않는 유저입니다.");
     } catch(err) {
       console.error(err);
       throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
@@ -158,8 +170,10 @@ export class AuthService {
       if (findExistUser) {
         throw new ConflictException("이미 존재하는 이름입니다.");
       }
+      
       user.name = dto.name;
       user = await this.userRepo.save(user);
+
       return {
         address: user.address,
         name: user.name

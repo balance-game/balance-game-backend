@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuid } from 'uuid';
 import { extname } from 'path';
@@ -29,30 +29,42 @@ export class R2Service {
   }
   
   // 이미지 업로드
-  async uploadImage(file: Express.Multer.File, folder: string) {
+  async uploadProfileImage(file: Express.Multer.File, folder: string, beforeImageName: string) {
     if (!file) {
         throw new Error("파일이 비었습니다");
     }
-    else {
-        const key = `${folder}/${uuid()}${extname(file.originalname)}`;
-        let res;
 
-        try {
-            res = await this.s3.send(
-                new PutObjectCommand({
+    const fileName = `${uuid()}${extname(file.originalname)}`;
+    const key = `${folder}/${fileName}`;
+
+    try {
+        // 프포필 사진 R2에 등록
+        await this.s3.send(
+            new PutObjectCommand({
+                Bucket: this.bucket,
+                Key: key,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                CacheControl: 'public, max-age=31536000',
+            }),
+        );
+
+        // 기본 사진이면 지우지 않음
+        if (beforeImageName != "default.jpg") {
+            // 기존 사진 삭제
+            await this.s3.send(
+                new DeleteObjectCommand({
                     Bucket: this.bucket,
-                    Key: key,
-                    Body: file.buffer,
-                    ContentType: file.mimetype,
-                    CacheControl: 'public, max-age=31536000',
-                }),
-            );
-        } catch(err) {
-            console.error(err);
-            throw new InternalServerErrorException("저장에 실패했습니다");
+                    Key: `profile/${beforeImageName}`
+                })
+            )
         }
 
-        return `${uuid()}${extname(file.originalname)}`;
+    } catch(err) {
+        console.error(err);
+        throw new InternalServerErrorException("프로필 사진 저장에 실패했습니다");
     }
+
+    return `${fileName}`;
   }
 }

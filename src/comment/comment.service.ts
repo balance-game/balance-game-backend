@@ -9,13 +9,8 @@ import { EditComment } from './dto/edit-comment.dto';
 import { Like } from './entity/like.entity';    
 import { LikeType } from 'src/comment/enum/like-type.enum';
 import { Game } from 'src/game/entity/game.entity';
+import { ProfileImage } from 'src/user/entity/profile-image.entity';
 
-/**
- * 
- * 2025-08-18 Memo
- * 댓글 삭제시 대댓글 처리 추가하기
- * 
- */
 @Injectable()
 export class CommentService {
     constructor(
@@ -27,12 +22,29 @@ export class CommentService {
         private readonly likeRepo: Repository<Like>,
         @InjectRepository(Game)
         private readonly gameRepo: Repository<Game>,
+        @InjectRepository(ProfileImage)
+        private readonly profileImageRepo: Repository<ProfileImage>,
         private readonly dataSource: DataSource
     ) {}
 
+    async getProfile(userId: string) {
+        const data = await this.profileImageRepo.findOne({
+            where: { userId: userId },
+            select: { imageName: true }
+        });
+
+        if (!data) {
+            throw new Error("Profile이 존재하지 않습니다");
+        }
+
+        return data.imageName;
+    }
+
     async createComment(user: jwtUser, dto: CreateComment) {
         try {
-            const game = await this.gameRepo.findOne({ where: { id: dto.gameId } });
+            const game = await this.gameRepo.findOne({ 
+                where: { id: dto.gameId }
+            });
             if (!game) {
                 throw new NotFoundException("존재 하지 않는 게임입니다.");
             }
@@ -59,8 +71,10 @@ export class CommentService {
                 commentId: comment.id,
                 content: comment.content,
                 parentId: comment.parentId,
-                author: user.userName,
-                createAt: comment.createdAt,
+                authorName: user.userName,
+                authorId: user.userId,
+                authorProfileImage: await this.getProfile(user.userId),
+                createdAt: comment.createdAt,
                 likeCount: 0,
                 disLikeCount: 0,
                 likedByUser: null
@@ -95,8 +109,10 @@ export class CommentService {
                             id: comment.id,
                             content: comment.content,
                             parentId: comment.parentId,
-                            author: user.userName,
-                            createAt: comment.createdAt,
+                            authorName: user.userName,
+                            authorId: user.userId,
+                            authorProfileImage: await this.getProfile(user.userId),
+                            createdAt: comment.createdAt,
                             likeCount: likeCount,
                             dislikeCount: dislikeCount,
                             likedByUser: likedByUser?.type ?? null
@@ -190,8 +206,10 @@ export class CommentService {
                 commentId: comment.id,
                 content: comment.content,
                 parentId: comment.parentId,
-                author: user.userName,
-                createAt: comment.createdAt,
+                authorName: user.userName,
+                authorId: user.userId,
+                authorProfileImage: await this.getProfile(user.userId),
+                createdAt: comment.createdAt,
                 likeCount,
                 dislikeCount,
                 likedByUser: likedByUser ?? null
@@ -242,7 +260,7 @@ export class CommentService {
                 "co.parent_id AS parentId",
                 "u.name AS authorName",
                 "u.id AS authorId",
-                "p.url AS authorProfileImageName",
+                "p.image_name AS authorProfileImage",
                 "co.created_at AS createdAt",
                 `CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted`,
                 `SUM(CASE WHEN li.type = 'like' THEN 1 ELSE 0 END) AS likeCount`,
@@ -271,7 +289,7 @@ export class CommentService {
                 co.parent_id AS parentId,
                 u.name AS authorName,
                 u.id AS authorId,
-                p.url AS authorProfileImageName,
+                p.image_name AS authorProfileImage,
                 co.created_at AS createdAt,
                 CASE WHEN co.deleted_at IS NULL THEN false ELSE true END AS isDeleted,
                 SUM(CASE WHEN li.type = 'LIKE' THEN 1 ELSE 0 END) AS likeCount,
@@ -304,7 +322,6 @@ export class CommentService {
 
         const allCommentCount = await this.commentRepo.count();
 
-        // 대댓글 조회
         const allComent = await Promise.all(
             commentList.map(async (comment) => {
                 const commentIsDeleted = comment.isDeleted == 1 ? true : false;
@@ -313,30 +330,34 @@ export class CommentService {
                 if (commentIsDeleted) {
                     comment.author = null;
                     comment.authorId = null;
-                    comment.authorProfileImageName = null;
+                    comment.authorProfileImage = null;
                     comment.createdAt = null;
                     comment.likeCount = null;
                     comment.dislikeCount = null;
                     comment.likedByUser = null;
                 }
 
+                // 대댓글 조회
                 const replies = await qb
                     .where("co.parent_id = :parentId", { parentId: comment.commentId })
                     .orderBy("co.created_at", "ASC")
                     .getRawMany();
 
+                // 만약 대댓글이 없을 경우
                 if (replies.length > 0) {
-                    const replyIsDeleted = replies[0].isDeleted == 1 ? true : false;
-                    replies[0].isDeleted = replyIsDeleted;
-
-                    if (replyIsDeleted) {
-                        replies[0].authorName = null;
-                        replies[0].authorId = null;
-                        replies[0].authorProfileImageName = null;
-                        replies[0].createdAt = null;
-                        replies[0].likeCount = null;
-                        replies[0].dislikeCount = null;
-                        replies[0].likedByUser = null;
+                    for (const reply of replies) {                        
+                        const replyIsDeleted = reply.isDeleted == 1 ? true : false;
+                        reply.isDeleted = replyIsDeleted;
+    
+                        if (replyIsDeleted) {
+                            reply.authorName = null;
+                            reply.authorId = null;
+                            reply.authorProfileImage = null;
+                            reply.createdAt = null;
+                            reply.likeCount = null;
+                            reply.dislikeCount = null;
+                            reply.likedByUser = null;
+                        }
                     }
                 }
 

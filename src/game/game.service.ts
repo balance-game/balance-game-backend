@@ -52,10 +52,16 @@ export class GameService {
 
             const [data, total] = await qb.getManyAndCount();
             const gameList = data.map(game => {
-                const { user, ...rest } = game;
                 return {
-                    ...rest,
-                    createdByName: user?.name || null,
+                    id: game.id,
+                    optionA: game.optionA,
+                    optionB: game.optionB,
+                    voteCountA: game.voteCountA,
+                    voteCountB: game.voteCountB,
+                    deadline: game.deadline,
+                    createdById: game.user.id,
+                    createdByName: game.user.name,
+                    createdAt: game.createdAt,
                 };
             });
             
@@ -84,10 +90,16 @@ export class GameService {
             .getMany();
 
             const gameList = games.map(game => {
-                const { user, ...rest } = game;
                 return {
-                    ...rest,
-                    createdByName: user?.name || null,
+                    id: game.id,
+                    optionA: game.optionA,
+                    optionB: game.optionB,
+                    voteCountA: game.voteCountA,
+                    voteCountB: game.voteCountB,
+                    deadline: game.deadline,
+                    createdById: game.user.id,
+                    createdByName: game.user.name,
+                    createdAt: game.createdAt,
                 };
             });
 
@@ -98,19 +110,25 @@ export class GameService {
         }
     }
 
-    async getGame(_user: jwtUser, id: string) {
+    async getGame(user: jwtUser, id: string) {
         try {
-            const game = await this.gameRepo.find({
+            const game = await this.gameRepo.findOne({
                 where: { id: id },
                 relations: ["user"]
             });
 
             if (game) {
-                const { user, ...rest } = game[0];
-                const comment = await this.commentService.getComment(_user, id);
+                const comment = await this.commentService.getComment(user, id);
                 return {
-                    ...rest,
-                    createdByName: user?.name || null,
+                    id: game.id,
+                    optionA: game.optionA,
+                    optionB: game.optionB,
+                    voteCountA: game.voteCountA,
+                    voteCountB: game.voteCountB,
+                    deadline: game.deadline,
+                    createdById: game.user.id,
+                    createdByName: game.user.name,
+                    createdAt: game.createdAt,
                     comment
                 };
             }

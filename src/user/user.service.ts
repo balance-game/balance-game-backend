@@ -20,35 +20,6 @@ export class UserService {
         private readonly r2Service: R2Service
     ) {}
 
-    async myProfile(user: jwtUser) {
-        try {
-            const userInfo = await this.userRepo.findOne({
-                where: { id: user.userId },
-                select: { 
-                    id: true,
-                    address: true,
-                    name: true,
-                    createdAt: true
-                },
-                relations: ["votes", "games", "profileImage"]
-            });
-
-            if (!userInfo) {
-                throw new NotFoundException("존재하지 않는 유저입니다.");
-            }
-
-            return {
-                ...userInfo
-            }
-        } catch(err) {
-            if (err instanceof NotFoundException) {
-                throw err;
-            }
-            console.error(err);
-            throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
-        }
-    }
-
     async getUserProfile(id: string) {
         try {
             const userInfo = await this.userRepo.findOne({
@@ -59,16 +30,39 @@ export class UserService {
                     name: true,
                     createdAt: true
                 },
-                relations: ["votes", "games", "profileImage"]
+                relations: ["votes", "votes.game", "games", "games.user", "profileImage"]
             });
 
-            if (!userInfo) {
-                throw new NotFoundException("존재하지 않는 유저입니다.");
+            if (userInfo) {
+                return {
+                    id: userInfo.id,
+                    address: userInfo.address,
+                    name: userInfo.name,
+                    profileImage: userInfo.profileImage.imageName,
+                    games:
+                        userInfo.games.map((game) => {
+                            return {
+                                id: game.id,
+                                optionA: game.optionA,
+                                optionB: game.optionB,
+                                createdAt: game.createdAt,
+                                deadline: game.deadline
+                            }
+                        }),
+                    votes: 
+                        userInfo.votes.map((vote) => {
+                            return {
+                                gameId: vote.gameId,
+                                optionA: vote.game.optionA,
+                                optionB: vote.game.optionB,
+                                voteOption: vote.option,
+                                votedAt: vote.votedAt
+                            }
+                        })
+                }
             }
-
-            return {
-                ...userInfo
-            }
+            
+            throw new NotFoundException("존재하지 않는 유저입니다.");
         } catch(err) {
             if (err instanceof NotFoundException) {
                 throw err;
@@ -80,15 +74,32 @@ export class UserService {
     
     async editProfileImage(file: Express.Multer.File, userId: string) {
         try {
-            const imageName = await this.r2Service.uploadImage(file, "profile");
-            const profileImage = this.profileImageRepo.create({
-                userId: userId,
-                url: imageName
-            });
+            let profileImage = await this.profileImageRepo.findOne({ where: { userId: userId } });
 
+            // 없을 경우 생성
+            if (!profileImage) {
+                profileImage = this.profileImageRepo.create({
+                    userId: userId,
+                    imageName: "default.jpg"
+                });
+
+                await this.profileImageRepo.save(profileImage);
+            }
+
+            const imageName = await this.r2Service.uploadProfileImage(file, "profile", profileImage.imageName);
+
+            // 새로운 프로필 이미지 저장
+            profileImage.imageName = imageName;
             await this.profileImageRepo.save(profileImage);
+
+            return {
+                profileImage: imageName
+            };
         } catch(err) {
             console.error(err);
+            if (err instanceof InternalServerErrorException) {
+                throw err;
+            }
             throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
         }
     }
