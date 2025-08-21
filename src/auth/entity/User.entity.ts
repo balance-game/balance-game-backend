@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Role } from "../enum/role.enum";
 import { RefreshToken } from "./refresh-token.entity";
 import { Comment } from "src/comment/entity/comment.entity";
@@ -6,6 +6,7 @@ import { Notification } from "src/notification/entity/notification.entity";
 import { Like } from "src/comment/entity/like.entity";
 import { Game } from "src/game/entity/game.entity";
 import { Vote } from "src/game/entity/vote.entity";
+import { ProfileImage } from "src/user/entity/profile-image.entity";
 
 @Entity("user")
 export class User {
@@ -44,4 +45,7 @@ export class User {
 
   @OneToMany(() => Vote, (vote) => vote.user)
   votes: Vote[];
+
+  @OneToOne(() => ProfileImage, (profileImage) => profileImage.user)
+  profileImage: ProfileImage;
 }
