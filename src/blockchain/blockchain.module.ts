@@ -6,9 +6,10 @@ import { Game } from 'src/game/entity/game.entity';
 import { User } from 'src/auth/entity/user.entity';
 import { Vote } from 'src/game/entity/vote.entity';
 import { Blockchain } from './entity/blockchain.entity';
+import { GameWinner } from 'src/game/entity/game-winner.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Game, User, Vote, Blockchain])],
+  imports: [TypeOrmModule.forFeature([Game, GameWinner, User, Vote, Blockchain])],
   providers: [BlockchainService],
   controllers: [BlockchainController]
 })

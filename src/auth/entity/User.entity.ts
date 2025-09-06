@@ -7,6 +7,7 @@ import { Like } from "src/comment/entity/like.entity";
 import { Game } from "src/game/entity/game.entity";
 import { Vote } from "src/game/entity/vote.entity";
 import { ProfileImage } from "src/user/entity/profile-image.entity";
+import { GameWinner } from "src/game/entity/game-winner.entity";
 
 @Entity("user")
 export class User {
@@ -45,6 +46,9 @@ export class User {
 
   @OneToMany(() => Vote, (vote) => vote.user)
   votes: Vote[];
+
+  @OneToMany(() => GameWinner, (gameWinner) => gameWinner.user)
+  gameWinners: GameWinner[];
 
   @OneToOne(() => ProfileImage, (profileImage) => profileImage.user)
   profileImage: ProfileImage;

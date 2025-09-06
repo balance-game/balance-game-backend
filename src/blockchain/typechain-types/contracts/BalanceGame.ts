@@ -27,12 +27,19 @@ export interface BalanceGameInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "COST"
-      | "GAMEINDEX"
+      | "acceptOwnership"
+      | "checkWinner"
+      | "claimPool"
       | "createGame"
-      | "findGameById"
+      | "gameIndex"
+      | "getGameInfo"
+      | "getGameWinner"
       | "isContinue"
       | "owner"
-      | "renounceOwnership"
+      | "rawFulfillRandomWords"
+      | "requestIdToGameId"
+      | "s_vrfCoordinator"
+      | "setCoordinator"
       | "transferOwnership"
       | "vote"
       | "whiteList"
@@ -41,20 +48,41 @@ export interface BalanceGameInterface extends Interface {
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "ClaimPool"
+      | "CoordinatorSet"
       | "NewGame"
       | "NewVote"
+      | "NewWinner"
+      | "OwnershipTransferRequested"
       | "OwnershipTransferred"
+      | "RandomnessRequested"
       | "WhiteListUpdate"
   ): EventFragment;
 
   encodeFunctionData(functionFragment: "COST", values?: undefined): string;
-  encodeFunctionData(functionFragment: "GAMEINDEX", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "acceptOwnership",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "checkWinner",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "claimPool",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "createGame",
     values: [string, string, BigNumberish]
   ): string;
+  encodeFunctionData(functionFragment: "gameIndex", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "findGameById",
+    functionFragment: "getGameInfo",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getGameWinner",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
@@ -63,8 +91,20 @@ export interface BalanceGameInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "renounceOwnership",
+    functionFragment: "rawFulfillRandomWords",
+    values: [BigNumberish, BigNumberish[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "requestIdToGameId",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "s_vrfCoordinator",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setCoordinator",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "transferOwnership",
@@ -84,16 +124,41 @@ export interface BalanceGameInterface extends Interface {
   ): string;
 
   decodeFunctionResult(functionFragment: "COST", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "GAMEINDEX", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "createGame", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "findGameById",
+    functionFragment: "acceptOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "checkWinner",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "claimPool", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "createGame", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "gameIndex", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getGameInfo",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getGameWinner",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "isContinue", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "renounceOwnership",
+    functionFragment: "rawFulfillRandomWords",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "requestIdToGameId",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "s_vrfCoordinator",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setCoordinator",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -106,6 +171,43 @@ export interface BalanceGameInterface extends Interface {
     functionFragment: "whitelistUpdate",
     data: BytesLike
   ): Result;
+}
+
+export namespace ClaimPoolEvent {
+  export type InputTuple = [
+    gameId: BigNumberish,
+    claimAddress: AddressLike,
+    amount: BigNumberish,
+    winnerRank: BigNumberish
+  ];
+  export type OutputTuple = [
+    gameId: bigint,
+    claimAddress: string,
+    amount: bigint,
+    winnerRank: bigint
+  ];
+  export interface OutputObject {
+    gameId: bigint;
+    claimAddress: string;
+    amount: bigint;
+    winnerRank: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CoordinatorSetEvent {
+  export type InputTuple = [vrfCoordinator: AddressLike];
+  export type OutputTuple = [vrfCoordinator: string];
+  export interface OutputObject {
+    vrfCoordinator: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace NewGameEvent {
@@ -143,19 +245,19 @@ export namespace NewVoteEvent {
   export type InputTuple = [
     gameId: BigNumberish,
     votedAddress: AddressLike,
-    voteOpttion: BigNumberish,
+    voteOption: BigNumberish,
     votedAt: BigNumberish
   ];
   export type OutputTuple = [
     gameId: bigint,
     votedAddress: string,
-    voteOpttion: bigint,
+    voteOption: bigint,
     votedAt: bigint
   ];
   export interface OutputObject {
     gameId: bigint;
     votedAddress: string;
-    voteOpttion: bigint;
+    voteOption: bigint;
     votedAt: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -164,12 +266,54 @@ export namespace NewVoteEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace OwnershipTransferredEvent {
-  export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
-  export type OutputTuple = [previousOwner: string, newOwner: string];
+export namespace NewWinnerEvent {
+  export type InputTuple = [
+    gameId: BigNumberish,
+    winners: [AddressLike, AddressLike, AddressLike]
+  ];
+  export type OutputTuple = [gameId: bigint, winners: [string, string, string]];
   export interface OutputObject {
-    previousOwner: string;
-    newOwner: string;
+    gameId: bigint;
+    winners: [string, string, string];
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace OwnershipTransferRequestedEvent {
+  export type InputTuple = [from: AddressLike, to: AddressLike];
+  export type OutputTuple = [from: string, to: string];
+  export interface OutputObject {
+    from: string;
+    to: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace OwnershipTransferredEvent {
+  export type InputTuple = [from: AddressLike, to: AddressLike];
+  export type OutputTuple = [from: string, to: string];
+  export interface OutputObject {
+    from: string;
+    to: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace RandomnessRequestedEvent {
+  export type InputTuple = [requestId: BigNumberish, gameId: BigNumberish];
+  export type OutputTuple = [requestId: bigint, gameId: bigint];
+  export interface OutputObject {
+    requestId: bigint;
+    gameId: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -235,7 +379,15 @@ export interface BalanceGame extends BaseContract {
 
   COST: TypedContractMethod<[], [bigint], "view">;
 
-  GAMEINDEX: TypedContractMethod<[], [bigint], "view">;
+  acceptOwnership: TypedContractMethod<[], [void], "nonpayable">;
+
+  checkWinner: TypedContractMethod<
+    [_gameId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  claimPool: TypedContractMethod<[_gameId: BigNumberish], [void], "payable">;
 
   createGame: TypedContractMethod<
     [_questionA: string, _questionB: string, _deadline: BigNumberish],
@@ -243,8 +395,10 @@ export interface BalanceGame extends BaseContract {
     "payable"
   >;
 
-  findGameById: TypedContractMethod<
-    [arg0: BigNumberish],
+  gameIndex: TypedContractMethod<[], [bigint], "view">;
+
+  getGameInfo: TypedContractMethod<
+    [_gameId: BigNumberish],
     [
       [
         bigint,
@@ -255,17 +409,30 @@ export interface BalanceGame extends BaseContract {
         bigint,
         bigint,
         bigint,
-        string
+        string,
+        boolean
       ] & {
         id: bigint;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
         voteCountB: bigint;
-        totalETH: bigint;
+        totalpool: bigint;
         createAt: bigint;
         deadline: bigint;
         creator: string;
+        creatorClaimed: boolean;
+      }
+    ],
+    "view"
+  >;
+
+  getGameWinner: TypedContractMethod<
+    [_gameId: BigNumberish],
+    [
+      [[string, string, string], [boolean, boolean, boolean]] & {
+        winners: [string, string, string];
+        winnersClaimed: [boolean, boolean, boolean];
       }
     ],
     "view"
@@ -275,10 +442,28 @@ export interface BalanceGame extends BaseContract {
 
   owner: TypedContractMethod<[], [string], "view">;
 
-  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+  rawFulfillRandomWords: TypedContractMethod<
+    [requestId: BigNumberish, randomWords: BigNumberish[]],
+    [void],
+    "nonpayable"
+  >;
+
+  requestIdToGameId: TypedContractMethod<
+    [arg0: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  s_vrfCoordinator: TypedContractMethod<[], [string], "view">;
+
+  setCoordinator: TypedContractMethod<
+    [_vrfCoordinator: AddressLike],
+    [void],
+    "nonpayable"
+  >;
 
   transferOwnership: TypedContractMethod<
-    [newOwner: AddressLike],
+    [to: AddressLike],
     [void],
     "nonpayable"
   >;
@@ -305,8 +490,14 @@ export interface BalanceGame extends BaseContract {
     nameOrSignature: "COST"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "GAMEINDEX"
-  ): TypedContractMethod<[], [bigint], "view">;
+    nameOrSignature: "acceptOwnership"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "checkWinner"
+  ): TypedContractMethod<[_gameId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "claimPool"
+  ): TypedContractMethod<[_gameId: BigNumberish], [void], "payable">;
   getFunction(
     nameOrSignature: "createGame"
   ): TypedContractMethod<
@@ -315,9 +506,12 @@ export interface BalanceGame extends BaseContract {
     "payable"
   >;
   getFunction(
-    nameOrSignature: "findGameById"
+    nameOrSignature: "gameIndex"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getGameInfo"
   ): TypedContractMethod<
-    [arg0: BigNumberish],
+    [_gameId: BigNumberish],
     [
       [
         bigint,
@@ -328,17 +522,31 @@ export interface BalanceGame extends BaseContract {
         bigint,
         bigint,
         bigint,
-        string
+        string,
+        boolean
       ] & {
         id: bigint;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
         voteCountB: bigint;
-        totalETH: bigint;
+        totalpool: bigint;
         createAt: bigint;
         deadline: bigint;
         creator: string;
+        creatorClaimed: boolean;
+      }
+    ],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "getGameWinner"
+  ): TypedContractMethod<
+    [_gameId: BigNumberish],
+    [
+      [[string, string, string], [boolean, boolean, boolean]] & {
+        winners: [string, string, string];
+        winnersClaimed: [boolean, boolean, boolean];
       }
     ],
     "view"
@@ -350,11 +558,24 @@ export interface BalanceGame extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "renounceOwnership"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+    nameOrSignature: "rawFulfillRandomWords"
+  ): TypedContractMethod<
+    [requestId: BigNumberish, randomWords: BigNumberish[]],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "requestIdToGameId"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "s_vrfCoordinator"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "setCoordinator"
+  ): TypedContractMethod<[_vrfCoordinator: AddressLike], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "transferOwnership"
-  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
+  ): TypedContractMethod<[to: AddressLike], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "vote"
   ): TypedContractMethod<
@@ -374,6 +595,20 @@ export interface BalanceGame extends BaseContract {
   >;
 
   getEvent(
+    key: "ClaimPool"
+  ): TypedContractEvent<
+    ClaimPoolEvent.InputTuple,
+    ClaimPoolEvent.OutputTuple,
+    ClaimPoolEvent.OutputObject
+  >;
+  getEvent(
+    key: "CoordinatorSet"
+  ): TypedContractEvent<
+    CoordinatorSetEvent.InputTuple,
+    CoordinatorSetEvent.OutputTuple,
+    CoordinatorSetEvent.OutputObject
+  >;
+  getEvent(
     key: "NewGame"
   ): TypedContractEvent<
     NewGameEvent.InputTuple,
@@ -388,11 +623,32 @@ export interface BalanceGame extends BaseContract {
     NewVoteEvent.OutputObject
   >;
   getEvent(
+    key: "NewWinner"
+  ): TypedContractEvent<
+    NewWinnerEvent.InputTuple,
+    NewWinnerEvent.OutputTuple,
+    NewWinnerEvent.OutputObject
+  >;
+  getEvent(
+    key: "OwnershipTransferRequested"
+  ): TypedContractEvent<
+    OwnershipTransferRequestedEvent.InputTuple,
+    OwnershipTransferRequestedEvent.OutputTuple,
+    OwnershipTransferRequestedEvent.OutputObject
+  >;
+  getEvent(
     key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
+  >;
+  getEvent(
+    key: "RandomnessRequested"
+  ): TypedContractEvent<
+    RandomnessRequestedEvent.InputTuple,
+    RandomnessRequestedEvent.OutputTuple,
+    RandomnessRequestedEvent.OutputObject
   >;
   getEvent(
     key: "WhiteListUpdate"
@@ -403,6 +659,28 @@ export interface BalanceGame extends BaseContract {
   >;
 
   filters: {
+    "ClaimPool(uint256,address,uint256,uint8)": TypedContractEvent<
+      ClaimPoolEvent.InputTuple,
+      ClaimPoolEvent.OutputTuple,
+      ClaimPoolEvent.OutputObject
+    >;
+    ClaimPool: TypedContractEvent<
+      ClaimPoolEvent.InputTuple,
+      ClaimPoolEvent.OutputTuple,
+      ClaimPoolEvent.OutputObject
+    >;
+
+    "CoordinatorSet(address)": TypedContractEvent<
+      CoordinatorSetEvent.InputTuple,
+      CoordinatorSetEvent.OutputTuple,
+      CoordinatorSetEvent.OutputObject
+    >;
+    CoordinatorSet: TypedContractEvent<
+      CoordinatorSetEvent.InputTuple,
+      CoordinatorSetEvent.OutputTuple,
+      CoordinatorSetEvent.OutputObject
+    >;
+
     "NewGame(uint256,string,string,uint256,uint256,address)": TypedContractEvent<
       NewGameEvent.InputTuple,
       NewGameEvent.OutputTuple,
@@ -425,6 +703,28 @@ export interface BalanceGame extends BaseContract {
       NewVoteEvent.OutputObject
     >;
 
+    "NewWinner(uint256,address[3])": TypedContractEvent<
+      NewWinnerEvent.InputTuple,
+      NewWinnerEvent.OutputTuple,
+      NewWinnerEvent.OutputObject
+    >;
+    NewWinner: TypedContractEvent<
+      NewWinnerEvent.InputTuple,
+      NewWinnerEvent.OutputTuple,
+      NewWinnerEvent.OutputObject
+    >;
+
+    "OwnershipTransferRequested(address,address)": TypedContractEvent<
+      OwnershipTransferRequestedEvent.InputTuple,
+      OwnershipTransferRequestedEvent.OutputTuple,
+      OwnershipTransferRequestedEvent.OutputObject
+    >;
+    OwnershipTransferRequested: TypedContractEvent<
+      OwnershipTransferRequestedEvent.InputTuple,
+      OwnershipTransferRequestedEvent.OutputTuple,
+      OwnershipTransferRequestedEvent.OutputObject
+    >;
+
     "OwnershipTransferred(address,address)": TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
@@ -434,6 +734,17 @@ export interface BalanceGame extends BaseContract {
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
+    >;
+
+    "RandomnessRequested(uint256,uint256)": TypedContractEvent<
+      RandomnessRequestedEvent.InputTuple,
+      RandomnessRequestedEvent.OutputTuple,
+      RandomnessRequestedEvent.OutputObject
+    >;
+    RandomnessRequested: TypedContractEvent<
+      RandomnessRequestedEvent.InputTuple,
+      RandomnessRequestedEvent.OutputTuple,
+      RandomnessRequestedEvent.OutputObject
     >;
 
     "WhiteListUpdate(address,bool)": TypedContractEvent<

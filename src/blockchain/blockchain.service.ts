@@ -1,23 +1,24 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { WebSocketProvider } from 'ethers';
+import { Block, WebSocketProvider } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
-import { DataSource, LessThan, MoreThan, QueryRunner, Repository } from 'typeorm';
-import { Cron } from '@nestjs/schedule';
+import { DataSource, In, LessThan, MoreThan, QueryRunner, Repository } from 'typeorm';
 import { BalanceGame } from './typechain-types';
 
 // TypeChain 추후 분리 예정
 import { BalanceGame__factory } from './typechain-types';
 
 import { Blockchain } from './entity/blockchain.entity';
-import { NewGameEvent, NewVoteEvent } from './typechain-types/contracts/BalanceGame';
-import { handleNewGame } from './util/event/handleNewGame';
-import { handleNewVote } from './util/event/handleNewVote';
+import { ClaimPoolEvent, NewGameEvent, NewVoteEvent, NewWinnerEvent } from './typechain-types/contracts/BalanceGame';
+import { handleNewGame } from './event/handleNewGame';
+import { handleNewVote } from './event/handleNewVote';
 import { Vote } from 'src/game/entity/vote.entity';
 import { User } from 'src/auth/entity/user.entity';
 import { VoteOption } from 'src/game/enum/vote-option.enum';
 import { TypedContractEvent, TypedDeferredTopicFilter } from './typechain-types/common';
+import { handleNewWinner } from './event/handleNewWinner';
+import { GameWinner } from 'src/game/entity/game-winner.entity';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -62,16 +63,20 @@ export class BlockchainService implements OnModuleInit {
 
   // 이벤트 복구
   async recoverEvents() {
-    let fromBlock;
+    let fromBlock: number;
     const toBlock = "latest";
 
     type BalanceGameContractEventFilter =
   | TypedContractEvent<NewGameEvent.InputTuple, NewGameEvent.OutputTuple, NewGameEvent.OutputObject>
-  | TypedContractEvent<NewVoteEvent.InputTuple, NewVoteEvent.OutputTuple, NewVoteEvent.OutputObject>;
+  | TypedContractEvent<NewVoteEvent.InputTuple, NewVoteEvent.OutputTuple, NewVoteEvent.OutputObject>
+  | TypedContractEvent<NewWinnerEvent.InputTuple, NewWinnerEvent.OutputTuple, NewWinnerEvent.OutputObject>
+  | TypedContractEvent<ClaimPoolEvent.InputTuple, ClaimPoolEvent.OutputTuple, ClaimPoolEvent.OutputObject>;
 
     const eventFilters: TypedDeferredTopicFilter<BalanceGameContractEventFilter>[] = [
       this.contract.filters.NewGame(),
       this.contract.filters.NewVote(),
+      this.contract.filters.NewWinner(),
+      this.contract.filters.ClaimPool()
     ];
 
     // 현재 네트워크 한개로 고정
@@ -79,19 +84,25 @@ export class BlockchainService implements OnModuleInit {
     const latestBlock = await this.contract.runner!.provider!.getBlock("latest");
 
     if (chainInfoInDB) {
-      fromBlock = BigInt(chainInfoInDB.lastBlockNumber);
+      fromBlock = Number(chainInfoInDB.lastBlockNumber);
     }
     else {
-      fromBlock = 0;
+      fromBlock = Number(this.configService.get<String>("CONTRACT_DEPLOY_BLOCK_NUMBER"));
     }
     
     this.logger.log(`Event Recovering BlockNumber from ${fromBlock} to ${latestBlock!.number}`);
 
-    let games: Partial<Game>[] = [];
-    let votes: Partial<Vote>[] = [];
+    let gamesDB: Partial<Game>[] = [];
+    let votesDB: Partial<Vote>[] = [];
+    let winnersDB: Partial<GameWinner>[] = [];
+
+    let lastEventName;
+
     for (const filter of eventFilters) {
       const events = await this.contract.queryFilter(filter, fromBlock, toBlock);
+      if (events.length === 0) continue;
       for (const event of events) {
+        // 배열에 이벤트 수집
         switch (event.eventName) {
           case "NewGame": {
             const args = event.args as NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
@@ -101,7 +112,7 @@ export class BlockchainService implements OnModuleInit {
               throw new Error("VoteSaveError: unknown Address" + args.creator);
             }
             
-            games.push({
+            gamesDB.push({
               id: args.gameId.toString(),
               optionA: args.questionA,
               optionB: args.questionB,
@@ -112,7 +123,6 @@ export class BlockchainService implements OnModuleInit {
 
             break;
           }
-
           case "NewVote": {
             const args = event.args as NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
             const newVoteUser = await this.userRepo.findOne({ where : { address: args.votedAddress }});
@@ -120,32 +130,85 @@ export class BlockchainService implements OnModuleInit {
             if (!newVoteUser) {
               throw new Error("VoteSaveError: unknown Address" + args.votedAddress);
             }
-            votes.push({
+            votesDB.push({
               gameId: args.gameId.toString(),
               userId: newVoteUser.id,
-              option: Number(args.voteOpttion) == 0 ? VoteOption.A : VoteOption.B,
+              option: Number(args.voteOption) == 0 ? VoteOption.A : VoteOption.B,
               votedAt: new Date(Number(args.votedAt) * 1000),
             });
 
             break;
           }
+          case "NewWinner": {
+            const [gameId, winners] = event.args as NewWinnerEvent.OutputTuple & NewVoteEvent.OutputObject;
+            const users = await this.userRepo.find({ where: { address: In(winners) }});
+            const sortedUsers = winners.map(addr => users.find(u => u.address === addr));
+            
+            for(let i = 0; i < winners.length; i++) {
+              if (!sortedUsers[i]) {
+                this.logger.warn("GameWinnerSaveError: unknown Address " + sortedUsers[i]);
+                continue;
+              }
+              winnersDB.push({
+                gameId: gameId.toString(),
+                userId: sortedUsers[i]!.id,
+                rank: i + 1
+              });
+            }
+
+            break;
+          }
+          case "ClaimPool": {
+            break;
+          }
         }
+
+        lastEventName = event.eventName;
       }
+
+      // 이벤트별 DB 저장
+      await this.saveEventInDB(lastEventName, gamesDB, votesDB, winnersDB, latestBlock!);
     }
 
+    this.logger.log("Event Recovering Finish")
+  }
+
+  async saveEventInDB(
+    lastEventName: string,
+    gamesDB: Partial<Game>[] = [],
+    votesDB: Partial<Vote>[] = [],
+    winnersDB: Partial<GameWinner>[] = [],
+    latestBlock: Block
+  ): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      let game = queryRunner.manager.create(Game, games);
-      let vote = queryRunner.manager.create(Vote, votes);
-      await queryRunner.manager.upsert(Game, games, ["id"]);
-      await queryRunner.manager.upsert(Vote, votes, ["gameId", "userId"]);
+      // DB 반영
+      switch(lastEventName) {
+        case "NewGame": {
+          await queryRunner.manager.upsert(Game, gamesDB, ["id"]);
+
+          break;
+        }
+        case "NewVote": {
+          await queryRunner.manager.upsert(Vote, votesDB, ["gameId", "userId"]);
+
+          break;
+        }
+        case "NewWinner": {
+          await queryRunner.manager.upsert(GameWinner, winnersDB, ["gameId", "userId"]);
+
+          break;
+        }
+        case "ClaimPool": {
+          break;
+        }
+      }
 
       await this.saveBlockNumber(latestBlock!.number.toString(), queryRunner);
-      this.logger.log("Event Recovering Success");
-
+      this.logger.log(`${lastEventName} Recovering Success`);
       await queryRunner.commitTransaction();
     } catch(err) {
       console.error(err);
@@ -160,7 +223,7 @@ export class BlockchainService implements OnModuleInit {
   listenToEvents() {
     this.contract.on(this.contract.getEvent("NewGame"), async (...args) => {
       const event = args[args.length - 1] as NewGameEvent.Log;
-      if (!event) { 
+      if (!event) {
         return;
       }
       await handleNewGame(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
@@ -173,42 +236,14 @@ export class BlockchainService implements OnModuleInit {
       }
       await handleNewVote(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
-  }
-  
-  // 1분에 한번씩 온체인 데이터 반영
-  @Cron('* * * * *')
-  async getVoteCountFromOnchain() {
-    const now = new Date();
 
-    const gameList = await this.gameRepo.find({
-      where: {
-        deadline: MoreThan(now),
+    this.contract.on(this.contract.getEvent("NewWinner"), async(...args) => {
+      const event = args[args.length -1] as NewWinnerEvent.Log;
+      if (!event) {
+        return;
       }
+      await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
-
-    // 투표 현황 반영
-    for(const game of gameList) {
-      try {
-        const gameInfo = await this.contract.findGameById(game.id);
-        
-        game.voteCountA = gameInfo[4].toString();
-        game.voteCountB = gameInfo[5].toString();
-        await this.gameRepo.save(game);
-      } catch(err) {
-        console.error("온체인 데이터 반영 실패" + err);
-      }
-    }
-
-
-    // 다른 CRON으로 분리 필요
-    // // 끝난 이벤트 추첨 요청하기
-    // const finishGames  = await this.gameRepo.find({
-    //   where: { deadline: LessThan(now) }
-    // });
-
-    // for(const game of finishGames) {
-    //   // 끝난이벤트 추첨 요청
-    // }
   }
 
   // 마지막 블록번호 저장
