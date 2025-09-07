@@ -3,7 +3,7 @@ import { Block, WebSocketProvider } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
-import { DataSource, In, LessThan, MoreThan, QueryRunner, Repository } from 'typeorm';
+import { DataSource, In, QueryRunner, Repository } from 'typeorm';
 import { BalanceGame } from './typechain-types';
 
 // TypeChain 추후 분리 예정
@@ -19,16 +19,31 @@ import { VoteOption } from 'src/game/enum/vote-option.enum';
 import { TypedContractEvent, TypedDeferredTopicFilter } from './typechain-types/common';
 import { handleNewWinner } from './event/handleNewWinner';
 import { GameWinner } from 'src/game/entity/game-winner.entity';
+import { WebSocket } from 'ws';
+
+type NewGameEventArgs = NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
+type NewVoteEventArgs = NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
+type NewWinnerEventArgs = NewWinnerEvent.OutputTuple & NewWinnerEvent.OutputObject;
+type ClaimPoolEventArgs = ClaimPoolEvent.OutputTuple & ClaimPoolEvent.OutputObject;
+
+/**
+ * 
+ * 2025-09-07 Memo
+ * ClaimPool 이벤트 완성하고 테스트하기
+ * 
+ */
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private provider: WebSocketProvider;
   private contract: BalanceGame;
+  private rpcUrl: string;
+  private reconnectDelay = 3000;
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(Game)
-    private readonly gameRepo: Repository<Game>,
+    @InjectRepository(GameWinner)
+    private readonly gameWinnerRepo: Repository<GameWinner>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Blockchain)
@@ -40,29 +55,57 @@ export class BlockchainService implements OnModuleInit {
   
   async onModuleInit() {
     const contractAddress = this.configService.get<string>("CONTRACT_ADDRESS");
-    const rpcUrl = this.configService.get<string>("RPC_URL_WS"); 
-    
+    const rpcUrl = this.configService.get<string>("RPC_URL_WS");
     if (!contractAddress || !rpcUrl) {
       throw new Error('Missing CONTRACT_ADDRESS or RPC_URL_WS in env');
     }
 
-    try {
-      this.provider = new WebSocketProvider(rpcUrl);
-      this.contract = BalanceGame__factory.connect(
-        contractAddress,
-        this.provider
-      );
-    } catch(err) {
-      console.error(err);
-      throw new Error("Connection failed to contract");
-    }
+    this.rpcUrl = rpcUrl;
 
-    await this.recoverEvents();
+    this.connectNetwork();
+    await this.smartContractConnect(contractAddress);
     this.listenToEvents();
+    await this.recoverEvents();
+  }
+
+  // 스마트 컨트랙트 연결
+  private async smartContractConnect(contractAddress: string): Promise<void> {
+    this.contract = BalanceGame__factory.connect(contractAddress, this.provider);
+    if (await this.provider.getCode(await this.contract.getAddress()) === "0x") {
+      throw new Error("Not Found Contract");
+    }
+  }
+
+  // 네트워크 연결
+  private connectNetwork(): void {
+    this.provider = new WebSocketProvider(this.rpcUrl);
+    const ws = this.provider.websocket as WebSocket;
+
+    ws.on("close", (code: number) => {
+      console.error(`WS closed with code ${code}, reconnecting in ${this.reconnectDelay / 1000}s...`);
+      this.reconnectNetwork();
+    });
+
+    ws.on("error", (err) => {
+      console.error("WS error:", err);
+      this.reconnectNetwork();
+    });
+  }
+
+  // 네트워크 재연결
+  private reconnectNetwork(): void {
+    setTimeout(async () => {
+      // 재연결 및 복구
+      this.provider = new WebSocketProvider(this.rpcUrl);
+      await this.smartContractConnect(await this.contract.getAddress());
+      this.listenToEvents();
+      await this.recoverEvents();
+      console.log("Reconnected to WS:", this.rpcUrl);
+    }, this.reconnectDelay);
   }
 
   // 이벤트 복구
-  async recoverEvents() {
+  async recoverEvents(): Promise<void> {
     let fromBlock: number;
     const toBlock = "latest";
 
@@ -95,6 +138,7 @@ export class BlockchainService implements OnModuleInit {
     let gamesDB: Partial<Game>[] = [];
     let votesDB: Partial<Vote>[] = [];
     let winnersDB: Partial<GameWinner>[] = [];
+    let claimPoolDB: Partial<GameWinner>[] = [];
 
     let lastEventName;
 
@@ -105,7 +149,7 @@ export class BlockchainService implements OnModuleInit {
         // 배열에 이벤트 수집
         switch (event.eventName) {
           case "NewGame": {
-            const args = event.args as NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
+            const args = event.args as NewGameEventArgs;
             const newGameUser = await this.userRepo.findOne({ where : { address: args.creator }});
 
             if (!newGameUser) {
@@ -124,12 +168,13 @@ export class BlockchainService implements OnModuleInit {
             break;
           }
           case "NewVote": {
-            const args = event.args as NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
+            const args = event.args as NewVoteEventArgs;
             const newVoteUser = await this.userRepo.findOne({ where : { address: args.votedAddress }});
 
             if (!newVoteUser) {
               throw new Error("VoteSaveError: unknown Address" + args.votedAddress);
             }
+
             votesDB.push({
               gameId: args.gameId.toString(),
               userId: newVoteUser.id,
@@ -140,7 +185,7 @@ export class BlockchainService implements OnModuleInit {
             break;
           }
           case "NewWinner": {
-            const [gameId, winners] = event.args as NewWinnerEvent.OutputTuple & NewVoteEvent.OutputObject;
+            const [gameId, winners] = event.args as NewWinnerEventArgs;
             const users = await this.userRepo.find({ where: { address: In(winners) }});
             const sortedUsers = winners.map(addr => users.find(u => u.address === addr));
             
@@ -149,6 +194,7 @@ export class BlockchainService implements OnModuleInit {
                 this.logger.warn("GameWinnerSaveError: unknown Address " + sortedUsers[i]);
                 continue;
               }
+
               winnersDB.push({
                 gameId: gameId.toString(),
                 userId: sortedUsers[i]!.id,
@@ -159,6 +205,21 @@ export class BlockchainService implements OnModuleInit {
             break;
           }
           case "ClaimPool": {
+            const args = event.args as ClaimPoolEventArgs;
+            const newClaimPoolUser = await this.userRepo.findOne({ where : { address: args.claimAddress }});
+
+            if (!newClaimPoolUser) {
+              throw new Error("ClaimPoolSaveError: unknown Address" + args.claimAddress);
+            }
+            
+            claimPoolDB.push({
+              gameId: args.gameId.toString(),
+              userId: newClaimPoolUser.id,
+              rank: Number(args.winnerRank),
+              claimPool: args.amount.toString(),
+              isClaimed: true
+            });
+
             break;
           }
         }
@@ -167,17 +228,19 @@ export class BlockchainService implements OnModuleInit {
       }
 
       // 이벤트별 DB 저장
-      await this.saveEventInDB(lastEventName, gamesDB, votesDB, winnersDB, latestBlock!);
+      await this.saveEventInDB(lastEventName, gamesDB, votesDB, winnersDB, claimPoolDB, latestBlock!);
     }
 
-    this.logger.log("Event Recovering Finish")
+    this.logger.log("Event Recovering Finish");
   }
 
-  async saveEventInDB(
+  // 이벤트 저장
+  private async saveEventInDB(
     lastEventName: string,
     gamesDB: Partial<Game>[] = [],
     votesDB: Partial<Vote>[] = [],
     winnersDB: Partial<GameWinner>[] = [],
+    claimPoolDB: Partial<GameWinner>[] = [],
     latestBlock: Block
   ): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -203,6 +266,8 @@ export class BlockchainService implements OnModuleInit {
           break;
         }
         case "ClaimPool": {
+          await queryRunner.manager.upsert(GameWinner, claimPoolDB, ["gameId", "userId"]);
+
           break;
         }
       }
@@ -220,7 +285,7 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // 블록체인 이벤트 등록
-  listenToEvents() {
+  listenToEvents(): void {
     this.contract.on(this.contract.getEvent("NewGame"), async (...args) => {
       const event = args[args.length - 1] as NewGameEvent.Log;
       if (!event) {
@@ -244,10 +309,21 @@ export class BlockchainService implements OnModuleInit {
       }
       await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
+
+    this.contract.on(this.contract.getEvent("ClaimPool"), async(...args) => {
+      const event = args[args.length -1] as NewWinnerEvent.Log;
+      if (!event) {
+        return;
+      }
+      await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
+    });
   }
 
   // 마지막 블록번호 저장
-  async saveBlockNumber(blockNumber: string, queryRunner: QueryRunner) {
+  async saveBlockNumber(
+    blockNumber: string, 
+    queryRunner: QueryRunner
+  ): Promise<void> {
     const network = await this.contract.runner!.provider!.getNetwork();
     await queryRunner.manager.upsert(Blockchain, {
         chainId: network.chainId.toString(),

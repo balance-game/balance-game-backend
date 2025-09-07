@@ -46,7 +46,7 @@ class BlockchainScheduler implements OnModuleInit {
 
         const gameList = await this.gameRepo.find({
             where: {
-            deadline: MoreThan(now),
+                deadline: MoreThan(now),
             }
         });
 
@@ -70,6 +70,10 @@ class BlockchainScheduler implements OnModuleInit {
     @Cron('*/5 * * * *')
     async getFinishGame() {    
         const now = new Date();
+
+        /**
+         * 투표 온체인 데이터 한번 반영해줘야됨
+         */
 
         const finishGames  = await this.gameRepo.find({
             where: { deadline: LessThan(now) }
