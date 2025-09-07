@@ -20,10 +20,10 @@ export class UserService {
         private readonly r2Service: R2Service
     ) {}
 
-    async getUserProfile(id: string) {
+    async getUserProfile(userId: string) {
         try {
             const userInfo = await this.userRepo.findOne({
-                where: { id: id },
+                where: { id: userId },
                 select: { 
                     id: true,
                     address: true,
@@ -70,6 +70,10 @@ export class UserService {
             console.error(err);
             throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
         }
+    }
+
+    async getUserClaimHistory(userId: string) {
+
     }
     
     async editProfileImage(file: Express.Multer.File, userId: string) {

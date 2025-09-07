@@ -13,5 +13,4 @@ export class Blockchain {
 
     @Column({ type: "bigint", name: "last_block_number" })
     lastBlockNumber: string;
-
 }

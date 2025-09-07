@@ -5,7 +5,7 @@ import { GetUser } from 'src/common/decorator/get-user.decorator';
 import { jwtUser } from 'src/common/interface/jwt-user';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-@Controller('user/profile')
+@Controller('user')
 export class UserController {
     constructor(
         private readonly userService: UserService
@@ -17,9 +17,14 @@ export class UserController {
         return this.userService.getUserProfile(user.userId);
     }
 
-    @Get("/:id")
-    getUserProfile(@Param("id") id: string) {
-        return this.userService.getUserProfile(id);
+    @Get("/:userId")
+    getUserProfile(@Param("userId") userId: string) {
+        return this.userService.getUserProfile(userId);
+    }
+
+    @Get("/:id/claim-history")
+    getUserClaimHistory(@Param("userId") userId: string) {
+        return this.userService.getUserClaimHistory(userId);
     }
 
     // Profile Image

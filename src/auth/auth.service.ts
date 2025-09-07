@@ -16,6 +16,11 @@ import { ProfileImage } from 'src/user/entity/profile-image.entity';
 
 const signMessage = "Please login with";
 
+/**
+ * 2025-09-04 Memo
+ * 회원 탈퇴 및 신규가입시 whiteList 업데이트 하는 코드 작성필요
+ */
+
 @Injectable()
 export class AuthService {
   constructor(

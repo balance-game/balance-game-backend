@@ -4,7 +4,6 @@ import { Game } from './entity/game.entity';
 import { Repository } from 'typeorm';
 import { GameSortType } from './enum/gameSortType.enum';
 import { GameStatusType } from './enum/gameStatusType.enum';
-import { Comment } from 'src/comment/entity/comment.entity';
 import { CommentService } from 'src/comment/comment.service';
 import { jwtUser } from 'src/common/interface/jwt-user';
 
@@ -58,6 +57,7 @@ export class GameService {
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
                     voteCountB: game.voteCountB,
+                    totalPool: game.totalPool,
                     deadline: game.deadline,
                     createdById: game.user.id,
                     createdByName: game.user.name,
@@ -96,6 +96,7 @@ export class GameService {
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
                     voteCountB: game.voteCountB,
+                    totalPool: game.totalPool,
                     deadline: game.deadline,
                     createdById: game.user.id,
                     createdByName: game.user.name,
@@ -125,6 +126,7 @@ export class GameService {
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
                     voteCountB: game.voteCountB,
+                    totalPool: game.totalPool,
                     deadline: game.deadline,
                     createdById: game.user.id,
                     createdByName: game.user.name,
