@@ -1,11 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/auth/entity/user.entity';
-import { jwtUser } from 'src/common/interface/jwt-user';
 import { Vote } from 'src/game/entity/vote.entity';
 import { Repository } from 'typeorm';
 import { ProfileImage } from './entity/profile-image.entity';
 import { R2Service } from 'src/infrastructure/r2.service';
+import { GameWinner } from 'src/game/entity/game-winner.entity';
 
 @Injectable()
 export class UserService {
@@ -15,8 +15,10 @@ export class UserService {
         @InjectRepository(Vote)
         private readonly voteRepo: Repository<Vote>,
         @InjectRepository(ProfileImage)
-
         private readonly profileImageRepo: Repository<ProfileImage>,
+        @InjectRepository(GameWinner)
+        private readonly gameWinnerRepo: Repository<GameWinner>,
+
         private readonly r2Service: R2Service
     ) {}
 
@@ -32,6 +34,8 @@ export class UserService {
                 },
                 relations: ["votes", "votes.game", "games", "games.user", "profileImage"]
             });
+
+            console.log(userInfo);
 
             if (userInfo) {
                 return {
@@ -72,8 +76,25 @@ export class UserService {
         }
     }
 
-    async getUserClaimHistory(userId: string) {
-
+    async getUserWinnerHistory(userId: string) {
+        try {
+            const rs = await this.gameWinnerRepo.find({
+                where: { userId: userId }
+            });
+            
+            return rs.map((history) => {
+                return {
+                    gameId: history.gameId,
+                    userId: history.userId,
+                    rank: history.rank,
+                    claimPool: history.claimPool,
+                    isClaimed: history.isClaimed
+                }
+            });
+        } catch(err) {
+            console.error(err);
+            throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
+        }
     }
     
     async editProfileImage(file: Express.Multer.File, userId: string) {

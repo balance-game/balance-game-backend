@@ -22,9 +22,9 @@ export class UserController {
         return this.userService.getUserProfile(userId);
     }
 
-    @Get("/:id/claim-history")
-    getUserClaimHistory(@Param("userId") userId: string) {
-        return this.userService.getUserClaimHistory(userId);
+    @Get("/:userId/winner-history")
+    getUserWinnerHistory(@Param("userId") userId: string) {
+        return this.userService.getUserWinnerHistory(userId);
     }
 
     // Profile Image
