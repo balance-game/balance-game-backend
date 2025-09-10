@@ -35,8 +35,6 @@ export class UserService {
                 relations: ["votes", "votes.game", "games", "games.user", "profileImage"]
             });
 
-            console.log(userInfo);
-
             if (userInfo) {
                 return {
                     id: userInfo.id,
