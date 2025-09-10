@@ -1,14 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Block, WebSocketProvider } from 'ethers';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Block, JsonRpcProvider, Signer, WebSocketProvider } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Game } from 'src/game/entity/game.entity';
 import { DataSource, In, QueryRunner, Repository } from 'typeorm';
 import { BalanceGame } from './typechain-types';
-
-// TypeChain 추후 분리 예정
-import { BalanceGame__factory } from './typechain-types';
-
 import { Blockchain } from './entity/blockchain.entity';
 import { ClaimPoolEvent, NewGameEvent, NewVoteEvent, NewWinnerEvent } from './typechain-types/contracts/BalanceGame';
 import { handleNewGame } from './event/handleNewGame';
@@ -19,27 +15,14 @@ import { VoteOption } from 'src/game/enum/vote-option.enum';
 import { TypedContractEvent, TypedDeferredTopicFilter } from './typechain-types/common';
 import { handleNewWinner } from './event/handleNewWinner';
 import { GameWinner } from 'src/game/entity/game-winner.entity';
-import { WebSocket } from 'ws';
 
 type NewGameEventArgs = NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
 type NewVoteEventArgs = NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
 type NewWinnerEventArgs = NewWinnerEvent.OutputTuple & NewWinnerEvent.OutputObject;
 type ClaimPoolEventArgs = ClaimPoolEvent.OutputTuple & ClaimPoolEvent.OutputObject;
 
-/**
- * 
- * 2025-09-07 Memo
- * ClaimPool 이벤트 완성하고 테스트하기
- * 
- */
-
 @Injectable()
 export class BlockchainService implements OnModuleInit {
-  private provider: WebSocketProvider;
-  private contract: BalanceGame;
-  private rpcUrl: string;
-  private reconnectDelay = 3000;
-
   constructor(
     private readonly configService: ConfigService,
     @InjectRepository(GameWinner)
@@ -48,60 +31,23 @@ export class BlockchainService implements OnModuleInit {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Blockchain)
     private readonly blockChainRepo: Repository<Blockchain>,
+    @Inject("BLOCKCHAIN_CONNECTION")
+    private readonly blockchainProvider: {
+      contractAddress: string,
+      httpProvider: JsonRpcProvider, 
+      webSocketProvider: WebSocketProvider,
+      httpContract: BalanceGame,
+      webSocketContract: BalanceGame,
+      ownerWallet: Signer
+    },
     private readonly dataSource: DataSource
   ) {}
 
   private readonly logger = new Logger(BlockchainService.name);
   
   async onModuleInit() {
-    const contractAddress = this.configService.get<string>("CONTRACT_ADDRESS");
-    const rpcUrl = this.configService.get<string>("RPC_URL_WS");
-    if (!contractAddress || !rpcUrl) {
-      throw new Error('Missing CONTRACT_ADDRESS or RPC_URL_WS in env');
-    }
-
-    this.rpcUrl = rpcUrl;
-
-    this.connectNetwork();
-    await this.smartContractConnect(contractAddress);
     this.listenToEvents();
     await this.recoverEvents();
-  }
-
-  // 스마트 컨트랙트 연결
-  private async smartContractConnect(contractAddress: string): Promise<void> {
-    this.contract = BalanceGame__factory.connect(contractAddress, this.provider);
-    if (await this.provider.getCode(await this.contract.getAddress()) === "0x") {
-      throw new Error("Not Found Contract");
-    }
-  }
-
-  // 네트워크 연결
-  private connectNetwork(): void {
-    this.provider = new WebSocketProvider(this.rpcUrl);
-    const ws = this.provider.websocket as WebSocket;
-
-    ws.on("close", (code: number) => {
-      console.error(`WS closed with code ${code}, reconnecting in ${this.reconnectDelay / 1000}s...`);
-      this.reconnectNetwork();
-    });
-
-    ws.on("error", (err) => {
-      console.error("WS error:", err);
-      this.reconnectNetwork();
-    });
-  }
-
-  // 네트워크 재연결
-  private reconnectNetwork(): void {
-    setTimeout(async () => {
-      // 재연결 및 복구
-      this.provider = new WebSocketProvider(this.rpcUrl);
-      await this.smartContractConnect(await this.contract.getAddress());
-      this.listenToEvents();
-      await this.recoverEvents();
-      console.log("Reconnected to WS:", this.rpcUrl);
-    }, this.reconnectDelay);
   }
 
   // 이벤트 복구
@@ -116,15 +62,15 @@ export class BlockchainService implements OnModuleInit {
   | TypedContractEvent<ClaimPoolEvent.InputTuple, ClaimPoolEvent.OutputTuple, ClaimPoolEvent.OutputObject>;
 
     const eventFilters: TypedDeferredTopicFilter<BalanceGameContractEventFilter>[] = [
-      this.contract.filters.NewGame(),
-      this.contract.filters.NewVote(),
-      this.contract.filters.NewWinner(),
-      this.contract.filters.ClaimPool()
+      this.blockchainProvider.httpContract.filters.NewGame(),
+      this.blockchainProvider.httpContract.filters.NewVote(),
+      this.blockchainProvider.httpContract.filters.NewWinner(),
+      this.blockchainProvider.httpContract.filters.ClaimPool()
     ];
 
     // 현재 네트워크 한개로 고정
     const chainInfoInDB = await this.blockChainRepo.findOne({ where: {} });
-    const latestBlock = await this.contract.runner!.provider!.getBlock("latest");
+    const latestBlock = await this.blockchainProvider.httpContract.runner!.provider!.getBlock("latest");
 
     if (chainInfoInDB) {
       fromBlock = Number(chainInfoInDB.lastBlockNumber);
@@ -142,8 +88,12 @@ export class BlockchainService implements OnModuleInit {
 
     let lastEventName;
 
+    /**
+     * @TODO
+     * 나눠서 조회 하는 방식으로 변경 해야됨
+     */
     for (const filter of eventFilters) {
-      const events = await this.contract.queryFilter(filter, fromBlock, toBlock);
+      const events = await this.blockchainProvider.httpContract.queryFilter(filter, fromBlock, toBlock);
       if (events.length === 0) continue;
       for (const event of events) {
         // 배열에 이벤트 수집
@@ -286,7 +236,7 @@ export class BlockchainService implements OnModuleInit {
 
   // 블록체인 이벤트 등록
   listenToEvents(): void {
-    this.contract.on(this.contract.getEvent("NewGame"), async (...args) => {
+    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewGame"), async (...args) => {
       const event = args[args.length - 1] as NewGameEvent.Log;
       if (!event) {
         return;
@@ -294,7 +244,7 @@ export class BlockchainService implements OnModuleInit {
       await handleNewGame(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.contract.on(this.contract.getEvent("NewVote"), async (...args) => {
+    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewVote"), async (...args) => {
       const event = args[args.length - 1] as NewVoteEvent.Log;
       if (!event) {
         return;
@@ -302,7 +252,7 @@ export class BlockchainService implements OnModuleInit {
       await handleNewVote(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.contract.on(this.contract.getEvent("NewWinner"), async(...args) => {
+    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewWinner"), async(...args) => {
       const event = args[args.length -1] as NewWinnerEvent.Log;
       if (!event) {
         return;
@@ -310,7 +260,7 @@ export class BlockchainService implements OnModuleInit {
       await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.contract.on(this.contract.getEvent("ClaimPool"), async(...args) => {
+    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("ClaimPool"), async(...args) => {
       const event = args[args.length -1] as NewWinnerEvent.Log;
       if (!event) {
         return;
@@ -324,7 +274,7 @@ export class BlockchainService implements OnModuleInit {
     blockNumber: string, 
     queryRunner: QueryRunner
   ): Promise<void> {
-    const network = await this.contract.runner!.provider!.getNetwork();
+    const network = await this.blockchainProvider.httpContract.runner!.provider!.getNetwork();
     await queryRunner.manager.upsert(Blockchain, {
         chainId: network.chainId.toString(),
         chainName: network.name,

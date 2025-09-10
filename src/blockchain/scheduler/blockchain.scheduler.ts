@@ -59,6 +59,8 @@ class BlockchainScheduler implements OnModuleInit {
                 game.voteCountB = gameInfo.voteCountB.toString();
                 game.totalPool = gameInfo.totalpool.toString();
 
+                console.log(gameInfo);
+
                 await this.gameRepo.save(game);
             } catch(err) {
                 console.error("온체인 데이터 반영 실패" + err);

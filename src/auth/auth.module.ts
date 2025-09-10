@@ -6,10 +6,11 @@ import { Nonce } from './entity/nonce.entity';
 import { User } from './entity/user.entity';
 import { RefreshToken } from './entity/refresh-token.entity';
 import { AccessTokenStrategy } from './strategies/jwt-token.strategy';
+import { blockchainProvider } from 'src/blockchain/blockchain.provider';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Nonce, User, RefreshToken])],
   controllers: [AuthController],
-  providers: [AuthService, AccessTokenStrategy],
+  providers: [AuthService, AccessTokenStrategy, blockchainProvider],
 })
 export class AuthModule {}

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, Inject, Injectable, InternalServerErrorException, NotFoundException, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Nonce } from './entity/nonce.entity';
 import { GetNonce } from './dto/get-nonce.dto';
@@ -11,13 +11,14 @@ import { JwtPayload } from 'src/common/interface/jwt-payload';
 import { User } from './entity/user.entity';
 import { EditUser } from './dto/edit-user.dto';
 import { v4 } from 'uuid';
-import { ethers } from 'ethers';
+import { ethers, JsonRpcProvider, Signer, WebSocketProvider } from 'ethers';
 import { ProfileImage } from 'src/user/entity/profile-image.entity';
+import { BalanceGame } from 'src/blockchain/typechain-types';
 
 const signMessage = "Please login with";
 
 /**
- * 2025-09-04 Memo
+ * @TODO
  * 회원 탈퇴 및 신규가입시 whiteList 업데이트 하는 코드 작성필요
  */
 
@@ -30,9 +31,18 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
+    @Inject("BLOCKCHAIN_CONNECTION")
+    private readonly blockchainProvider: {
+      contractAddress: string,
+      httpProvider: JsonRpcProvider, 
+      webSocketProvider: WebSocketProvider,
+      httpContract: BalanceGame,
+      webSocketContract: BalanceGame,
+      ownerWallet: Signer
+    },
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
   ) {}
 
   async getNonce(dto: GetNonce) {
@@ -45,6 +55,7 @@ export class AuthService {
         nonce,
         expiryDate,
       }, ['address']);
+
     } catch(err) {
       console.error(err);
       throw new InternalServerErrorException("서버에 오류가 발생했습니다");
@@ -60,7 +71,10 @@ export class AuthService {
       await this.nonceRepo.delete({ address: nonceValidCheck.address });
       throw new UnauthorizedException("인증코드가 만료되었습니다.");
     }
+    // 모두 소문자로 변경한뒤 저장해야지 비교시 오류안남
+    dto.address = dto.address.toLocaleLowerCase();
     const signer = ethers.verifyMessage(`${signMessage} ${nonceValidCheck.nonce}`, dto.signature).toLocaleLowerCase();
+    
     if (signer !== dto.address) {
       throw new UnauthorizedException("유효하지 않은 서명입니다.");
     }
@@ -77,6 +91,8 @@ export class AuthService {
         withDeleted: true
       });
 
+      let needBlockchainUpdate = false;
+
       // 회원가입 또는 탈퇴회원 재 가입 처리
       if (!user) {
         user = await queryRunner.manager.save(User, {
@@ -86,12 +102,16 @@ export class AuthService {
 
         await queryRunner.manager.save(ProfileImage, {
           userId: user.id,
-          fileName: "default.jpg"
+          imageName: "default.jpg"
         });
+
+        needBlockchainUpdate = true;
       }
       else if (user.deletedAt) {
         user.deletedAt = null;
         await queryRunner.manager.save(user);
+
+        needBlockchainUpdate = true;
       }
 
       // 토큰 발급
@@ -105,6 +125,11 @@ export class AuthService {
         user: user,
         expiryDate: expiryDate,
       });
+
+      // whitelist update
+      if (needBlockchainUpdate) {
+        await this.updateWhitelist(dto.address, true);
+      }
 
       await queryRunner.commitTransaction();
 
@@ -161,11 +186,27 @@ export class AuthService {
         };
       }
 
-      throw new BadRequestException("존재하지 않는 유저입니다.");
+      throw new NotFoundException("존재하지 않는 유저입니다.");
     } catch(err) {
+      if (err instanceof NotFoundException) {
+        throw err;
+      }
       console.error(err);
       throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
     }
+  }
+
+  async updateWhitelist(address: string, status: boolean) {
+      const tx = await this.blockchainProvider.httpContract.connect(this.blockchainProvider.ownerWallet).whitelistUpdate(address, status);
+      const receipt = await tx.wait();
+      const eventTopic = this.blockchainProvider.httpContract.interface.getEvent("WhiteListUpdate").topicHash;
+
+      const foundlog = receipt?.logs.find((log) => log.topics[0] === eventTopic);
+      const parseLog = this.blockchainProvider.httpContract.interface.parseLog(foundlog!);
+      
+      if (!parseLog || parseLog.args.userAddress.toLocaleLowerCase() !== address || parseLog.args.status !== status) {
+        throw new BadGatewayException("whitelist 업데이트에 실패했습니다");
+      }
   }
 
   async editUserName(userId: string, dto: EditUser) {
@@ -190,18 +231,29 @@ export class AuthService {
   }
 
   async deleteUser(userId: string) {
-    const user = await this.userRepo.findOne({ 
-      where: { id: userId.toString() },
-      relations: ["refreshToken"]
-    });
-    if (user) {
-      user.name = v4();
-      await this.refreshTokenRepo.remove(user.refreshToken);
-      await this.userRepo.softRemove(user);
-      await this.userRepo.save(user);
-    }
-    else {
-      throw new BadRequestException("존재하지 않는 유저입니다.");
+    try {
+      await this.dataSource.transaction(async manager => {
+        const user = await manager.findOne(User, {
+          where: { id: userId },
+          relations: ["refreshToken"]
+        });
+        
+        if (!user) throw new NotFoundException("존재하지 않는 유저입니다.");
+      
+        user.name = v4();
+        await manager.remove(user.refreshToken);
+        await manager.softRemove(user);
+        await manager.save(user);
+
+        await this.updateWhitelist(user.address, false);
+      });
+    } catch(err) {
+      if (err instanceof NotFoundException || BadGatewayException) {
+        throw err;
+      }
+      
+      console.error(err);
+      throw new Error("서버에 오류가 발생했습니다.");
     }
   }
 
