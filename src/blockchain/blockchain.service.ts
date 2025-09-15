@@ -15,6 +15,7 @@ import { VoteOption } from 'src/game/enum/vote-option.enum';
 import { TypedContractEvent, TypedDeferredTopicFilter } from './typechain-types/common';
 import { handleNewWinner } from './event/handleNewWinner';
 import { GameWinner } from 'src/game/entity/game-winner.entity';
+import { handleClaimPool } from './event/handleClaimPool';
 
 type NewGameEventArgs = NewGameEvent.OutputTuple & NewGameEvent.OutputObject;
 type NewVoteEventArgs = NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
@@ -236,7 +237,9 @@ export class BlockchainService implements OnModuleInit {
 
   // 블록체인 이벤트 등록
   listenToEvents(): void {
-    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewGame"), async (...args) => {
+    const wsc = this.blockchainProvider.webSocketContract
+
+    wsc.on(wsc.filters.NewGame(), async (...args) => {
       const event = args[args.length - 1] as NewGameEvent.Log;
       if (!event) {
         return;
@@ -244,7 +247,7 @@ export class BlockchainService implements OnModuleInit {
       await handleNewGame(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewVote"), async (...args) => {
+    wsc.on(wsc.filters.NewVote(), async (...args) => {
       const event = args[args.length - 1] as NewVoteEvent.Log;
       if (!event) {
         return;
@@ -252,7 +255,7 @@ export class BlockchainService implements OnModuleInit {
       await handleNewVote(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("NewWinner"), async(...args) => {
+    wsc.on(wsc.filters.NewWinner(), async(...args) => {
       const event = args[args.length -1] as NewWinnerEvent.Log;
       if (!event) {
         return;
@@ -260,12 +263,12 @@ export class BlockchainService implements OnModuleInit {
       await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
 
-    this.blockchainProvider.webSocketContract.on(this.blockchainProvider.webSocketContract.getEvent("ClaimPool"), async(...args) => {
-      const event = args[args.length -1] as NewWinnerEvent.Log;
+    wsc.on(wsc.filters.ClaimPool(), async(...args) => {
+      const event = args[args.length -1] as ClaimPoolEvent.Log;
       if (!event) {
         return;
       }
-      await handleNewWinner(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
+      await handleClaimPool(event, this.dataSource, this.logger, this.saveBlockNumber.bind(this));
     });
   }
 

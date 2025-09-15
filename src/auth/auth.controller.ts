@@ -26,6 +26,14 @@ export class AuthController {
     return this.authService.handleUserAuth(dto);
   }
 
+  @Post("/logout")
+  @UseGuards(AuthGuard("jwt"))
+  @HttpCode(204)
+  logout(@Req() req: Request) {
+    const refreshTokenId = Number(req.cookies["refreshTokenId"]);
+    return this.authService.logout(refreshTokenId);
+  }
+
   @Post("/access-token")
   refreshToken(@Req() req: Request) {
     const refreshTokenId = Number(req.cookies["refreshTokenId"]);
