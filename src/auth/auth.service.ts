@@ -146,6 +146,19 @@ export class AuthService {
     }
   }
 
+  async logout(refreshTokenId: number) {
+    if (!refreshTokenId) {
+      throw new BadRequestException("refreshTokenId가 비어있습니다");
+    }
+    try {
+      await this.refreshTokenRepo.delete({
+        id: refreshTokenId.toString()
+      });
+    } catch(err) {
+      throw new InternalServerErrorException("서버에 오류가 발생했습니다.");
+    }
+  }
+
   async newAccessToken(refreshTokenId: number) {
     const findRefreshToken =  await this.refreshTokenRepo.findOne({ 
       where: { id: refreshTokenId.toString() },
