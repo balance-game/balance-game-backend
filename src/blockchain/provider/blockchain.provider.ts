@@ -21,14 +21,12 @@ export const blockchainProvider: Provider = {
     let webSocketProvider = new WebSocketProvider(webSocketRpcUrl);
     let httpProvider = new JsonRpcProvider(httpRpcUrl);
     
-    console.log(await webSocketProvider.getBlockNumber());
     // 스마트컨트랙트 연결
     const httpContract = BalanceGame__factory.connect(contractAddress, httpProvider);
     const webSocketContract = BalanceGame__factory.connect(contractAddress, webSocketProvider);
     if (await httpProvider.getCode(await httpContract.getAddress()) === "0x") {
       throw new Error("Not Found Contract");
     }
-    console.log(await webSocketContract.COST());
 
     const ownerWallet = new ethers.Wallet(ownerPrivateKey, httpProvider);
 

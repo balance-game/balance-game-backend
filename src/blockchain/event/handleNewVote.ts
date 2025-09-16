@@ -1,6 +1,7 @@
 import { InternalServerErrorException, Logger } from "@nestjs/common";
 import { User } from "src/auth/entity/user.entity";
 import { NewVoteEvent } from "src/blockchain/typechain-types/contracts/BalanceGame";
+import { Game } from "src/game/entity/game.entity";
 import { Vote } from "src/game/entity/vote.entity";
 import { VoteOption } from "src/game/enum/vote-option.enum";
 import { DataSource } from "typeorm/data-source";
@@ -31,6 +32,15 @@ export async function handleNewVote(
                 option: Number(voteOpttion) == 0 ? VoteOption.A : VoteOption.B,
                 votedAt: new Date(Number(votedAt) * 1000)
             });
+
+            // UX를 위한 투표수 업데이트
+            const voteCountType = Number(voteOpttion) === 0 ? "A" : "B";
+            await queryRunner.manager
+            .createQueryBuilder()
+            .update(Game)
+            .set({ voteCountA: () => `voteCount${voteCountType} + 1` })
+            .where("id = :id", { id: gameId })
+            .execute();
 
             const voteResult = await queryRunner.manager.save(vote);
             const blockNumber = (await event.getBlock()).number.toString();

@@ -17,11 +17,6 @@ import { BalanceGame } from 'src/blockchain/typechain-types';
 
 const signMessage = "Please login with";
 
-/**
- * @TODO
- * 회원 탈퇴 및 신규가입시 whiteList 업데이트 하는 코드 작성필요
- */
-
 @Injectable()
 export class AuthService {
   constructor(
