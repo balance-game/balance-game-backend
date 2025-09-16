@@ -51,8 +51,6 @@ export class BlockchainSchedulerService {
                 this.logger.error("온체인 데이터 반영 실패" + err);
             }
         }
-
-        this.logger.log("success wirte onchain data");
     }
 
     /**
@@ -96,7 +94,5 @@ export class BlockchainSchedulerService {
             await this.gameRepo.save(game);
 
         }
-
-        this.logger.log("success call checkWinner");
     }
 }
