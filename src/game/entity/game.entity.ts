@@ -28,10 +28,13 @@ export class Game {
     totalPool: string;
 
     @Column({ type: "bigint", name: "created_by" })
-    createdBy: string
+    createdBy: string;
 
     @Column({ type: "timestamp" })
-    deadline: Date
+    deadline: Date;
+
+    @Column({ type: "boolean", select: false, default: false })
+    isChecked: boolean;
 
     @OneToMany(() => Comment, (comment) => comment.game)
     comments: Comment[];

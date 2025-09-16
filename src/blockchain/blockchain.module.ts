@@ -8,14 +8,11 @@ import { Vote } from 'src/game/entity/vote.entity';
 import { Blockchain } from './entity/blockchain.entity';
 import { GameWinner } from 'src/game/entity/game-winner.entity';
 import { BlockchainProviderModule } from './provider/blockchain-provider.module';
+import { BlockchainSchedulerService } from './scheduler/blockchain-scheduler.service';
 
-/**
- * @TODO
- * blockchainProvider 중복 로딩 해결해야됨
- */
 @Module({
   imports: [TypeOrmModule.forFeature([Game, GameWinner, User, Vote, Blockchain]), BlockchainProviderModule],
-  providers: [BlockchainService],
+  providers: [BlockchainService, BlockchainSchedulerService],
   controllers: [BlockchainController]
 })
 export class BlockchainModule {}
