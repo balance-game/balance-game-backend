@@ -33,8 +33,11 @@ export class Game {
     @Column({ type: "timestamp" })
     deadline: Date;
 
-    @Column({ type: "boolean", select: false, default: false })
+    @Column({ type: "boolean", name: "is_checked", default: false })
     isChecked: boolean;
+
+    @Column({ type: "text", name: "fail_message", default: null, select: false })
+    failMessage: string;
 
     @OneToMany(() => Comment, (comment) => comment.game)
     comments: Comment[];
