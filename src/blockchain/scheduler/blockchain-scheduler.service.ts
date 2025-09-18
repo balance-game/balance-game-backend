@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Game } from "src/game/entity/game.entity";
@@ -62,13 +62,13 @@ export class BlockchainSchedulerService {
     @Cron('* * * * *')
     async getFinishGame() {    
         const now = new Date();
-        const finishGames  = await this.gameRepo.find({
+        const finishGames = await this.gameRepo.find({
             where: { 
                 deadline: LessThan(now),
                 isChecked: false
             }
         });
-        
+                
         for(const game of finishGames) {
             try {
                 // 온체인 데이터 반영
@@ -85,14 +85,23 @@ export class BlockchainSchedulerService {
             try {
                 await this.blockchainProvider.httpContract.connect(this.blockchainProvider.ownerWallet).checkWinner(game.id);
             } catch(err) {
-                /**
-                 * @TODO
-                 */
+                if (err.reason === "Not enough voters") {
+                    game.failMessage = "참여자가 너무 적습니다.";
+                }
+                else if (err instanceof AggregateError) {
+                    console.log("추첨 요청 실패");
+                    err.errors.forEach((e, i) => {
+                        console.log(`Error ${i + 1}:`, e.message);
+                    });
+                }
+                else {
+                    game.failMessage = JSON.stringify(err);
+                    console.error("추첨 요청 실패" + err);
+                }
+            } finally {
+                game.isChecked = true;
+                await this.gameRepo.save(game);
             }
-            
-            game.isChecked = true;
-            await this.gameRepo.save(game);
-
         }
     }
 }
