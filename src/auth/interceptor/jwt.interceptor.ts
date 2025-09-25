@@ -12,7 +12,8 @@ export class jwtInterceptor implements NestInterceptor {
                 res.cookie('refreshTokenId', jwt.refreshTokenId, {
                     httpOnly: true,
                     secure: true,
-                    sameSite: 'none',
+                    sameSite: "None",
+                    path: "/",
                     maxAge: 1000 * 60 * 60 * 24 * 30 // 30일
                 });
 
