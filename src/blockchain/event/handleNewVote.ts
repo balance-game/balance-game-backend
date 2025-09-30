@@ -12,7 +12,9 @@ export async function handleNewVote(
   logger: Logger,
   saveBlockNumber: any
 ): Promise<void> {
-    const [gameId, address, voteOpttion, votedAt] = event.args;
+    let [gameId, address, voteOpttion, votedAt] = event.args;
+    address = address.toLowerCase();
+
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();

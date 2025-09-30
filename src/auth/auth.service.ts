@@ -29,7 +29,7 @@ export class AuthService {
     @Inject("BLOCKCHAIN_CONNECTION")
     private readonly blockchainProvider: {
       contractAddress: string,
-      httpProvider: JsonRpcProvider, 
+      httpProvider: JsonRpcProvider,
       webSocketProvider: WebSocketProvider,
       httpContract: BalanceGame,
       webSocketContract: BalanceGame,

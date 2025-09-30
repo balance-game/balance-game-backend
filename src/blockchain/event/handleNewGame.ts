@@ -10,7 +10,9 @@ export async function handleNewGame(
   logger: Logger,
   saveBlockNumber
 ): Promise<void> {
-  const [gameId, questionA, questionB, createdAt, deadline, creator] = event.args;
+  let [gameId, questionA, questionB, createdAt, deadline, creator] = event.args;
+  creator = creator.toLocaleLowerCase();
+  
   const deadlineToDate = new Date(Number(deadline) * 1000);
 
   const queryRunner = dataSource.createQueryRunner();

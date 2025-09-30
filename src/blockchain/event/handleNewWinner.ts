@@ -10,7 +10,7 @@ export async function handleNewWinner(
   logger: Logger,
   saveBlockNumber
 ): Promise<void> {
-  const [gameId, winners] = event.args;
+  let [gameId, winners] = event.args;
   const queryRunner = dataSource.createQueryRunner();
   await queryRunner.connect();
   await queryRunner.startTransaction();
@@ -19,6 +19,8 @@ export async function handleNewWinner(
     let winner: GameWinner[] = [];
 
     for(let i = 0; i < winners.length; i++) {
+      winners[i] = winners[i].toLocaleLowerCase();
+
       const user = await queryRunner.manager.findOne(User, { 
         where: { address: winners[i] }
       });

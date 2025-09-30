@@ -9,7 +9,8 @@ export async function handleClaimPool(
   logger: Logger,
   saveBlockNumber
 ): Promise<void> {
-  const [gameId, claimAddress, amount, winnerRank] = event.args;
+  let [gameId, claimAddress, amount, winnerRank] = event.args;
+  claimAddress = claimAddress.toLocaleLowerCase();
 
   const queryRunner = dataSource.createQueryRunner();
   await queryRunner.connect();

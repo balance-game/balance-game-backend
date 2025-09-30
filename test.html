@@ -6,9 +6,11 @@
 </head>
 <body>
   <button id="login-btn">지갑 로그인</button>
+  <button id="logout-btn">로그아웃</button>
 
   <script>
     const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
 
     async function connectWallet() {
       if (!window.ethereum) {
@@ -62,7 +64,23 @@
       }
     }
 
+    async function logout() {
+      try {
+        const loginRes = await fetch('https://port-0-balance-game-backend-754g42aluumga8c.sel5.cloudtype.app/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+
+        const loginData = await loginRes.json();
+        console.log('✅ 로그아웃 결과:', loginData);
+      } catch (err) {
+        console.error('❌ 에러:', err);
+      }
+    }
+
     loginBtn.addEventListener('click', login);
+    logoutBtn.addEventListener('click', logout);
   </script>
 </body>
 </html>

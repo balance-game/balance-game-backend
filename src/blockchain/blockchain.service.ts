@@ -22,6 +22,13 @@ type NewVoteEventArgs = NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
 type NewWinnerEventArgs = NewWinnerEvent.OutputTuple & NewWinnerEvent.OutputObject;
 type ClaimPoolEventArgs = ClaimPoolEvent.OutputTuple & ClaimPoolEvent.OutputObject;
 
+/**
+ * @TODO
+ * 이벤트 복구하는 부분에서 
+ * arg(readonly) 객체안에 있는 지갑주소 부분 소문자로 바꾸는 코드 추가해야됨 
+ * 
+ * DB 옵션 변경 or DB 변경시 대소문자 문제로 유저/게임이 조회되지 않아서 오류 날 수도 있음
+ */
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   constructor(
@@ -101,10 +108,11 @@ export class BlockchainService implements OnModuleInit {
         switch (event.eventName) {
           case "NewGame": {
             const args = event.args as NewGameEventArgs;
-            const newGameUser = await this.userRepo.findOne({ where : { address: args.creator }});
+            const creator = args.creator.toLowerCase();
+            const newGameUser = await this.userRepo.findOne({ where : { address: creator }});
 
             if (!newGameUser) {
-              throw new Error("VoteSaveError: unknown Address" + args.creator);
+              throw new Error("VoteSaveError: unknown Address" + creator);
             }
             
             gamesDB.push({
@@ -120,10 +128,11 @@ export class BlockchainService implements OnModuleInit {
           }
           case "NewVote": {
             const args = event.args as NewVoteEventArgs;
-            const newVoteUser = await this.userRepo.findOne({ where : { address: args.votedAddress }});
+            const votedAddress = args.votedAddress.toLocaleLowerCase();
+            const newVoteUser = await this.userRepo.findOne({ where : { address: votedAddress }});
 
             if (!newVoteUser) {
-              throw new Error("VoteSaveError: unknown Address" + args.votedAddress);
+              throw new Error("VoteSaveError: unknown Address" + votedAddress);
             }
 
             votesDB.push({
@@ -138,7 +147,7 @@ export class BlockchainService implements OnModuleInit {
           case "NewWinner": {
             const [gameId, winners] = event.args as NewWinnerEventArgs;
             const users = await this.userRepo.find({ where: { address: In(winners) }});
-            const sortedUsers = winners.map(addr => users.find(u => u.address === addr));
+            const sortedUsers = winners.map(addr => users.find(u => u.address === addr.toLocaleLowerCase()));
             
             for(let i = 0; i < winners.length; i++) {
               if (!sortedUsers[i]) {
@@ -157,10 +166,11 @@ export class BlockchainService implements OnModuleInit {
           }
           case "ClaimPool": {
             const args = event.args as ClaimPoolEventArgs;
-            const newClaimPoolUser = await this.userRepo.findOne({ where : { address: args.claimAddress }});
+            const claimAddress = args.claimAddress.toLocaleLowerCase();
+            const newClaimPoolUser = await this.userRepo.findOne({ where : { address: claimAddress }});
 
             if (!newClaimPoolUser) {
-              throw new Error("ClaimPoolSaveError: unknown Address" + args.claimAddress);
+              throw new Error("ClaimPoolSaveError: unknown Address" + claimAddress);
             }
             
             claimPoolDB.push({
