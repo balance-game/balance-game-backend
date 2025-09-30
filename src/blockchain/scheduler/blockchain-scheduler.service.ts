@@ -99,6 +99,10 @@ export class BlockchainSchedulerService {
                     console.error("추첨 요청 실패" + err);
                 }
             } finally {
+                /**
+                 * @TODO
+                 * RPC 노드의 연결이 끊겼을 경우 재시도 로직 넣어야함
+                 */
                 game.isChecked = true;
                 await this.gameRepo.save(game);
             }
