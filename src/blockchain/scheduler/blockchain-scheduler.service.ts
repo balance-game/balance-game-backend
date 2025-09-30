@@ -88,6 +88,9 @@ export class BlockchainSchedulerService {
                 if (err.reason === "Not enough voters") {
                     game.failMessage = "참여자가 너무 적습니다.";
                 }
+                else if (err.reason === "Already drawn.") {
+                    game.failMessage = "이미 추첨되었습니다.";
+                }
                 else if (err instanceof AggregateError) {
                     console.log("추첨 요청 실패");
                     err.errors.forEach((e, i) => {
