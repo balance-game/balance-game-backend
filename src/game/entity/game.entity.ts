@@ -9,6 +9,9 @@ export class Game {
     @PrimaryGeneratedColumn({ type: "bigint" })
     id: string;
 
+    @Column({ type: "varchar", name: "topic", length: 255 })
+    topic: string;
+
     @Column({ type: "varchar", name: "option_a", length: 255 })
     optionA: string;
 

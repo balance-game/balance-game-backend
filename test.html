@@ -24,7 +24,7 @@
     }
 
     async function fetchNonce(address) {
-      const res = await fetch('https://port-0-balance-game-backend-754g42aluumga8c.sel5.cloudtype.app/api/auth/nonce', {
+      const res = await fetch('localhost:3000/api/auth/nonce', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address })
@@ -50,7 +50,7 @@
         console.log(nonce)
         const signature = await signMessage(nonce, address);
 
-        const loginRes = await fetch('https://port-0-balance-game-backend-754g42aluumga8c.sel5.cloudtype.app/api/auth/login', {
+        const loginRes = await fetch('localhost:3000/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ address, signature }),
@@ -66,7 +66,7 @@
 
     async function logout() {
       try {
-        const loginRes = await fetch('https://port-0-balance-game-backend-754g42aluumga8c.sel5.cloudtype.app/api/auth/logout', {
+        const loginRes = await fetch('localhost:3000/app/api/auth/logout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include'

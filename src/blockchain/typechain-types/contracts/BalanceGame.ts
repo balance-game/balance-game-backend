@@ -34,7 +34,6 @@ export interface BalanceGameInterface extends Interface {
       | "gameIndex"
       | "getGameInfo"
       | "getGameWinner"
-      | "isContinue"
       | "owner"
       | "rawFulfillRandomWords"
       | "requestIdToGameId"
@@ -74,7 +73,7 @@ export interface BalanceGameInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "createGame",
-    values: [string, string, BigNumberish]
+    values: [string, string, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "gameIndex", values?: undefined): string;
   encodeFunctionData(
@@ -84,10 +83,6 @@ export interface BalanceGameInterface extends Interface {
   encodeFunctionData(
     functionFragment: "getGameWinner",
     values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "isContinue",
-    values: [AddressLike]
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
@@ -143,7 +138,6 @@ export interface BalanceGameInterface extends Interface {
     functionFragment: "getGameWinner",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "isContinue", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "rawFulfillRandomWords",
@@ -213,6 +207,7 @@ export namespace CoordinatorSetEvent {
 export namespace NewGameEvent {
   export type InputTuple = [
     gameId: BigNumberish,
+    topic: string,
     questionA: string,
     questionB: string,
     createdAt: BigNumberish,
@@ -221,6 +216,7 @@ export namespace NewGameEvent {
   ];
   export type OutputTuple = [
     gameId: bigint,
+    topic: string,
     questionA: string,
     questionB: string,
     createdAt: bigint,
@@ -229,6 +225,7 @@ export namespace NewGameEvent {
   ];
   export interface OutputObject {
     gameId: bigint;
+    topic: string;
     questionA: string;
     questionB: string;
     createdAt: bigint;
@@ -390,7 +387,12 @@ export interface BalanceGame extends BaseContract {
   claimPool: TypedContractMethod<[_gameId: BigNumberish], [void], "payable">;
 
   createGame: TypedContractMethod<
-    [_questionA: string, _questionB: string, _deadline: BigNumberish],
+    [
+      topic: string,
+      _questionA: string,
+      _questionB: string,
+      _deadline: BigNumberish
+    ],
     [void],
     "payable"
   >;
@@ -404,6 +406,7 @@ export interface BalanceGame extends BaseContract {
         bigint,
         string,
         string,
+        string,
         bigint,
         bigint,
         bigint,
@@ -413,6 +416,7 @@ export interface BalanceGame extends BaseContract {
         boolean
       ] & {
         id: bigint;
+        topic: string;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
@@ -437,8 +441,6 @@ export interface BalanceGame extends BaseContract {
     ],
     "view"
   >;
-
-  isContinue: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
 
   owner: TypedContractMethod<[], [string], "view">;
 
@@ -501,7 +503,12 @@ export interface BalanceGame extends BaseContract {
   getFunction(
     nameOrSignature: "createGame"
   ): TypedContractMethod<
-    [_questionA: string, _questionB: string, _deadline: BigNumberish],
+    [
+      topic: string,
+      _questionA: string,
+      _questionB: string,
+      _deadline: BigNumberish
+    ],
     [void],
     "payable"
   >;
@@ -517,6 +524,7 @@ export interface BalanceGame extends BaseContract {
         bigint,
         string,
         string,
+        string,
         bigint,
         bigint,
         bigint,
@@ -526,6 +534,7 @@ export interface BalanceGame extends BaseContract {
         boolean
       ] & {
         id: bigint;
+        topic: string;
         questionA: string;
         questionB: string;
         voteCountA: bigint;
@@ -551,9 +560,6 @@ export interface BalanceGame extends BaseContract {
     ],
     "view"
   >;
-  getFunction(
-    nameOrSignature: "isContinue"
-  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
   getFunction(
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
@@ -681,7 +687,7 @@ export interface BalanceGame extends BaseContract {
       CoordinatorSetEvent.OutputObject
     >;
 
-    "NewGame(uint256,string,string,uint256,uint256,address)": TypedContractEvent<
+    "NewGame(uint256,string,string,string,uint256,uint256,address)": TypedContractEvent<
       NewGameEvent.InputTuple,
       NewGameEvent.OutputTuple,
       NewGameEvent.OutputObject

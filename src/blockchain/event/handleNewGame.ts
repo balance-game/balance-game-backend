@@ -10,7 +10,7 @@ export async function handleNewGame(
   logger: Logger,
   saveBlockNumber
 ): Promise<void> {
-  let [gameId, questionA, questionB, createdAt, deadline, creator] = event.args;
+  let [gameId, topic, questionA, questionB, createdAt, deadline, creator] = event.args;
   creator = creator.toLocaleLowerCase();
   
   const deadlineToDate = new Date(Number(deadline) * 1000);
@@ -30,6 +30,7 @@ export async function handleNewGame(
     } else {
       const game = queryRunner.manager.create(Game, {
         id: gameId.toString(),
+        topic: topic,
         optionA: questionA,
         optionB: questionB,
         createdAt: new Date(Number(createdAt) * 1000),

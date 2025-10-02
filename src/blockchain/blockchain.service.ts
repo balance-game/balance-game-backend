@@ -22,13 +22,6 @@ type NewVoteEventArgs = NewVoteEvent.OutputTuple & NewVoteEvent.OutputObject;
 type NewWinnerEventArgs = NewWinnerEvent.OutputTuple & NewWinnerEvent.OutputObject;
 type ClaimPoolEventArgs = ClaimPoolEvent.OutputTuple & ClaimPoolEvent.OutputObject;
 
-/**
- * @TODO
- * 이벤트 복구하는 부분에서 
- * arg(readonly) 객체안에 있는 지갑주소 부분 소문자로 바꾸는 코드 추가해야됨 
- * 
- * DB 옵션 변경 or DB 변경시 대소문자 문제로 유저/게임이 조회되지 않아서 오류 날 수도 있음
- */
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   constructor(
@@ -117,6 +110,7 @@ export class BlockchainService implements OnModuleInit {
             
             gamesDB.push({
               id: args.gameId.toString(),
+              topic: args.topic,
               optionA: args.questionA,
               optionB: args.questionB,
               createdAt: new Date(Number(args.createdAt) * 1000),
