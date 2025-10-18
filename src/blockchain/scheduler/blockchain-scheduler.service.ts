@@ -53,11 +53,6 @@ export class BlockchainSchedulerService {
         }
     }
 
-    /**
-     * @TODO 
-     * [ "Not enough voters" ] 에러 처리하기
-     * 처리한뒤 try catch로 다시 감싸기
-     */
     // 1분마다 끝난 이벤트 당첨자 조회 요청
     @Cron('* * * * *')
     async getFinishGame() {    
