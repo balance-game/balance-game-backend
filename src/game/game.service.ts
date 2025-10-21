@@ -53,7 +53,6 @@ export class GameService {
             const gameList = data.map(game => {
                 return {
                     id: game.id,
-                    topic: game.topic,
                     optionA: game.optionA,
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
@@ -93,7 +92,6 @@ export class GameService {
             const gameList = games.map(game => {
                 return {
                     id: game.id,
-                    topic: game.topic,
                     optionA: game.optionA,
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
@@ -124,7 +122,6 @@ export class GameService {
                 const comment = await this.commentService.getComment(user, id);
                 return {
                     id: game.id,
-                    topic: game.topic,
                     optionA: game.optionA,
                     optionB: game.optionB,
                     voteCountA: game.voteCountA,
